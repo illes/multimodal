@@ -1,0 +1,80 @@
+<project name="ImageCLEF2011 " default="help" basedir=".">
+
+<property name="build.sysclasspath" value="last"/>
+
+<target name="help">
+    <echo message="Common build targets:" />
+    <echo message="jar         - Builds fayruzov.jar" />
+    <echo message="build       - Same as clean+jar" />
+    <echo message="compile     - Compiles classes" />
+    <echo message="clean       - Remove all *.class and .jar" />
+</target>
+
+<property file="build.properties"/>
+<property name="buildDir" value="build/java" />
+<property name="libDir" value="lib" />
+<property name="distDir" value="dist" />
+<property name="srcDir" value="src/java/" />
+<property name="jarFile" value="iclef2011.jar" />
+<property name="mainClass" value="org.learningformat.transform.PtbRawSentenceTransformer" />
+
+
+<path id="classpath">
+    <pathelement path="." />
+    <fileset dir="${libDir}" casesensitive="true">
+        <include name="*.jar" />
+    </fileset>
+    <!--<pathelement location="." />-->
+</path>
+
+<target name="build" depends="clean,jar"/>
+
+<target name="jar" depends="compile">
+    <tstamp>
+        <format property="TODAY" pattern="yyyy-MM-dd HH:mm:ss" />
+    </tstamp>
+    <mkdir dir="${distDir}"/>
+    <delete file="${distDir}/${jarFile}"/>
+<!--
+    <delete file="MANIFEST.MF"/>
+    <manifest file="MANIFEST.MF">
+	    <attribute name="Built-By" value="${user.name}"/>
+        <attribute name="Main-Class" value="client.Runners"/>
+        <attribute name="Built-Date" value="${TODAY}"/>
+    </manifest>
+    -->
+    <jar jarfile="${distDir}/${jarFile}">
+        <fileset dir="${buildDir}"/>
+    	<manifest>
+		    <attribute name="Built-By" value="${user.name}"/>
+	        <attribute name="Main-Class" value="${mainClass}"/>
+	        <attribute name="Built-Date" value="${TODAY}"/>
+	    </manifest>
+    </jar>
+</target>
+
+<target name="compile">
+    <mkdir dir="${buildDir}"/>
+    <javac
+        srcdir="${srcDir}"
+        destdir="${buildDir}"
+        classpathref="classpath"
+        debug="true"/>
+    <copy todir="${buildDir}">
+        <fileset dir="${srcDir}">
+            <include name="**/*.xsl" />
+            <include name="**/*.gif" />
+            <include name="**/*.jpg" />
+            <include name="**/*.txt" />
+            <include name="**/LICENSE*" />
+            <include name="**/*.properties" />
+        </fileset>
+    </copy>    
+</target>
+
+<target name="clean">
+    <delete dir="${buildDir}"/>
+    <delete file="${distDir}/${jarFile}"/>
+</target>
+
+</project>
