@@ -2,6 +2,8 @@ package bme.iclef.mahout;
 
 import java.util.Iterator;
 import java.io.IOException;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -20,7 +22,11 @@ public class Seq2CSV {
 	
 		for (String inFile : args) {
 			Path path = new Path (inFile);
-
+			
+			String outName = inFile.substring (0, inFile.indexOf ('.'));
+			
+			BufferedWriter out = new BufferedWriter(new FileWriter(outName+".csv"));
+			
 			SequenceFile.Reader seqReader = new SequenceFile.Reader (fs, path, conf);
 
 			VectorWritable vw = new VectorWritable ();
@@ -32,17 +38,19 @@ public class Seq2CSV {
 			
 				while (it.hasNext ()) {
 					i++;
-					System.out.print (it.next ().get ());
+					Double val = new Double (it.next ().get ());
+					out.write (val.toString ());
 					if (i < 128) {
-						System.out.print (",");
+						out.write (",");
 					}
 				}
 			
 				if (i != 128)
 					System.out.println ("we have a problem: "+ i);
 			
-				System.out.println ();
+				out.write ("\n");
 			}
+			out.close();
 		}
 	}
 	
