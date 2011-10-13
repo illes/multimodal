@@ -9,19 +9,47 @@ import org.apache.hadoop.mapred.*;
 
 public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 
-	static class ImageInputSplit implements InputSplit  {
-		private String filename;
+	public static final String FILES_PER_MAP = 
+		    "mapreduce.input.imageinputformat.filespermap";
 
-		ImageInputSplit() { }
-		ImageInputSplit(Path filename) {
-			this.filename = filename.toUri().getPath();
+
+	static class TextArrayWritable extends ArrayWritable {
+		public TextArrayWritable() {
+			super(Text.class);
 		}
+
+		public String toString() {
+			Writable[] w = get();
+			StringBuffer buffer = new StringBuffer();
+			String space = " ";
+
+			for(int i = 0; i< w.length; i++) {
+				buffer.append(w[i].toString()); 
+				buffer.append(space);
+			}
+			return buffer.toString();
+		}
+	}
+
+	static class ImageInputSplit implements InputSplit  {
+		private TextArrayWritable list;
+
+		ImageInputSplit() {}
+
+		ImageInputSplit(Text[] uris) {
+			this.list = new TextArrayWritable ();
+			this.list.set (uris);
+	       	}
+
 		public void write(DataOutput out) throws IOException { 
-			Text.writeString(out, filename); 
+			list.write (out);
 		}
+
 		public void readFields(DataInput in) throws IOException { 
-			filename = Text.readString(in); 
+			list = new TextArrayWritable ();
+			list.readFields (in);
 		}
+
 		public long getLength() { return 0L; }
 		public String[] getLocations() { return new String[0]; }
 	}
@@ -29,16 +57,48 @@ public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 	public InputSplit[] getSplits(JobConf conf, 
 				      int numSplits) throws IOException {
 		ArrayList<InputSplit> result = new ArrayList<InputSplit>();
+		/* get the number of files per splits */
+		long numFilesPerSplit = getNumFilesPerSplit (conf);
 		FileSystem fs = FileSystem.get(conf);
+
+		/* if it's 0 it means that we want to split whole process 
+		 * into that many tasks as many map task capacity is there 
+		 * available 
+		 */
+		if (numFilesPerSplit == 0) {
+			long maxMapTasks = new JobClient (conf).getClusterStatus().getMaxMapTasks ();
+			long numFiles = 0;
+			for (Path dir: getInputPaths(conf)) {
+				numFiles += fs.listStatus (dir).length;
+			}
+
+			numFilesPerSplit = numFiles/maxMapTasks;
+		}
+
 		for(Path dir: getInputPaths(conf)) {
-			for(FileStatus file: fs.listStatus(dir)) {
-				result.add(new ImageInputSplit(file.getPath()));
+			List<Text> split = new ArrayList<Text> ();
+			long numFiles = 0;
+			for (FileStatus f: fs.listStatus (dir)) {
+				split.add (new Text (f.getPath ().toUri().getPath()));
+				numFiles ++;
+
+				if (numFiles == numFilesPerSplit) {
+					ImageInputSplit imgSplit = 
+						new ImageInputSplit (split.toArray (new Text[split.size ()]));
+					result.add (imgSplit);
+					numFiles = 0;
+					split.clear ();
+				}
 			}
 		}
 		return result.toArray(new InputSplit[result.size()]);
 	}
 
 	public void validateInput(JobConf conf) { }
+
+	public static long getNumFilesPerSplit(JobConf conf) {
+		return conf.getInt(FILES_PER_MAP, 1);
+	}
 
 	public RecordReader<IntWritable, Text> getRecordReader(InputSplit split,
 							       JobConf conf, 
