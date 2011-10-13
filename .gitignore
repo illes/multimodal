@@ -1,0 +1,8 @@
+# compiled src
+.o
+
+# backup files
+.*.bak
+.*.orig
+.*.rej
+.*~
