@@ -7,3 +7,11 @@
 .*.rej
 .*~
 .*.swp
+
+# build directories
+build
+dist
+
+# editor/IDE config files
+.classpath
+.project
