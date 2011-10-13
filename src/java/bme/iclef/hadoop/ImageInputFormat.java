@@ -1,12 +1,26 @@
 package bme.iclef.hadoop;
 
-import java.io.*;
-import java.util.*;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.apache.hadoop.fs.*;
-import org.apache.hadoop.io.*;
-import org.apache.hadoop.mapred.*;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.mapred.FileInputFormat;
+import org.apache.hadoop.mapred.InputSplit;
+import org.apache.hadoop.mapred.JobClient;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.RecordReader;
+import org.apache.hadoop.mapred.Reporter;
 
+@SuppressWarnings("deprecation")
 public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 
 	public static final String FILES_PER_MAP = 
@@ -18,6 +32,7 @@ public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 			super(Text.class);
 		}
 
+		@Override
 		public String toString() {
 			Writable[] w = get();
 			StringBuffer buffer = new StringBuffer();
@@ -54,6 +69,7 @@ public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 		public String[] getLocations() { return new String[0]; }
 	}
 
+	@Override
 	public InputSplit[] getSplits(JobConf conf, 
 				      int numSplits) throws IOException {
 		ArrayList<InputSplit> result = new ArrayList<InputSplit>();
@@ -100,6 +116,7 @@ public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 		return conf.getInt(FILES_PER_MAP, 1);
 	}
 
+	@Override
 	public RecordReader<IntWritable, Text> getRecordReader(InputSplit split,
 							       JobConf conf, 
 							       Reporter reporter) {
