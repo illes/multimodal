@@ -1,8 +1,12 @@
 package bme.iclef.predict;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +23,13 @@ import javax.xml.parsers.SAXParserFactory;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.Reporter;
+import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.Vector;
+import org.apache.mahout.math.VectorWritable;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
@@ -34,13 +45,23 @@ import bme.iclef.representation.PMCArticle.Graphic;
 import bme.iclef.utils.FileUtils;
 import bme.iclef.xml.XmlParser;
 
+
+
+@SuppressWarnings("deprecation")
 public class RegexPredictor extends Predictor {
 
-	final Map<Matcher, Prediction> rules = new HashMap<Matcher, Prediction>();
-	private CSVWriter csv;
+	private final Map<Matcher, Prediction> rules = new HashMap<Matcher, Prediction>();
+	private final CSVWriter csv;
 	private String[] csvRow;
 
-	public RegexPredictor() {
+	public RegexPredictor() throws IOException {
+	    this(new FileWriter(RegexPredictor.class.getSimpleName() + ".csv"));
+	}
+	public RegexPredictor(Writer writer) throws IOException {
+	    this(writer, false, CSVWriter.DEFAULT_SEPARATOR, CSVWriter.DEFAULT_QUOTE_CHARACTER);
+	}
+
+	public RegexPredictor(Writer writer, boolean omitHeader, char separator, char quote) {
 		
 		// X ray
 		addRule("\\bX[- ]?ray", Label.XR_XRay, 0.8f);
@@ -207,18 +228,28 @@ public class RegexPredictor extends Predictor {
 		addRule("(?i)\\bMRI\\b", Label.forCode("MR"), 0.86);	// word_MRI_binarized = 1: MR (12.0/2.0)
 		addRule("(?i)\\bEndoscopic\\b", Label.forCode("EN"), 0.86);	// word_Endoscopic_binarized = 1: EN (6.0/1.0)
 		
-		try {
-			
-			csv = new CSVWriter(new FileWriter(RegexPredictor.class.getSimpleName() + ".csv"));
-			// write csv header
+		if (writer != null) {
+			csv = new CSVWriter(writer, separator, quote);
+
 			csvRow = new String[1 + rules.size()];
-			csvRow[0] = "id";
-			for (Prediction p : rules.values())
-				csvRow[p.getId()+1] = p.getComment();
-			csv.writeNext(csvRow);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
+			if (!omitHeader) {
+			    writeHeader();
+			}
 		}
+		else {
+		    csv = null;
+		}
+	}
+
+	private void writeHeader() {
+	    	if (csv == null)
+	    	    throw new UnsupportedOperationException("no CSVWriter available");
+	    	
+		// write csv header
+		csvRow[0] = "id";
+		for (Prediction p : rules.values())
+			csvRow[p.getId()+1] = p.getComment();
+		csv.writeNext(csvRow);
 	}
 
 	/**
@@ -245,6 +276,7 @@ public class RegexPredictor extends Predictor {
 	protected List<Prediction> predict(String id, String caption) {
 		List<Prediction> predictions = new ArrayList<Prediction>();
 		
+		System.err.println("PREDICTING: '" + id +"', '" + caption +"'");
 		// init csv row to zeros
 		Arrays.fill(csvRow, "0");
 		csvRow[0] = id;
@@ -259,8 +291,17 @@ public class RegexPredictor extends Predictor {
 		if (predictions.isEmpty() && caption.length() > 5) {
 			System.err.println("UNKNOWN: " + caption);
 		}
-		csv.writeNext(csvRow);
+		if (csv != null)
+		    	csv.writeNext(csvRow);
 		return predictions;
+	}
+	protected Vector match(String caption) {
+	    	double[] matches = new double[rules.size()];
+		for (Entry<Matcher, Prediction> rule : rules.entrySet()) {
+			if (rule.getKey().reset(caption).find())
+				matches[rule.getValue().getId()] = 1;
+		}
+		return new DenseVector(matches);
 	}
 	
 	
@@ -300,7 +341,15 @@ public class RegexPredictor extends Predictor {
 	}
 
 	public static class Test {
-		static RegexPredictor predictor = new RegexPredictor();
+		static RegexPredictor predictor;
+		
+		static {
+		    try {
+			predictor = new RegexPredictor();
+		    } catch (IOException e) {
+			throw new RuntimeException(e);
+		    }
+		}
 
 		public static void main(String[] args) throws SAXException,
 				IOException, XPathExpressionException {
@@ -336,6 +385,65 @@ public class RegexPredictor extends Predictor {
 				}
 			}
 		}
+	}
+	public static class StreamingMapper {		
 
+		public static void main(String[] args) {
+		    try {
+			Writer writer = new OutputStreamWriter(System.out);
+			RegexPredictor predictor = new RegexPredictor(writer, true, '\t', CSVWriter.NO_QUOTE_CHARACTER);
+		    	BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+		    	String line;
+			while ((line = br.readLine()) != null) {
+        			final String [] fields = line.split("\t");
+			    	System.err.println("LINE ("+fields.length+"):\t'" + line +"'");
+        			
+        			// skip empty lines
+        			if (line.length() == 0)
+        			    continue;
+        			
+        			String id = fields[0];
+        			String caption = fields[1];
+        			System.err.println("Testing '" + caption + "' ...");
+        
+        			/* List<Prediction> predictions = */ predictor.predict(id, caption);
+			}
+			writer.close();
+			System.exit(0);
+		    } catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		    }
+		}
+	}
+	
+	
+	public static class Mapper implements org.apache.hadoop.mapred.Mapper<Text, Text, Text, VectorWritable> {
+	    
+	    final RegexPredictor predictor;
+	    public static void main(String[] args) {
+		// TODO
+	    }
+	    
+	    public Mapper() throws IOException {
+		this.predictor = new RegexPredictor(null);
+	    }
+
+	    @Override
+	    public void map(Text key, Text value,
+		    OutputCollector<Text, VectorWritable> output,
+		    Reporter reporter) throws IOException {
+		output.collect(
+			key,
+			new VectorWritable(predictor.match(value.toString())));
+	    }
+
+	    @Override
+	    public void configure(JobConf job) {
+	    }
+
+	    @Override
+	    public void close() throws IOException {
+	    }
 	}
 }
