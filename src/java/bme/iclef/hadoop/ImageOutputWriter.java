@@ -1,14 +1,16 @@
 package bme.iclef.hadoop;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
 
-import org.apache.hadoop.fs.*;
-import org.apache.hadoop.io.*;
-import org.apache.hadoop.mapred.*;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.RecordWriter;
+import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapred.lib.MultipleOutputFormat;
 import org.apache.hadoop.util.Progressable;
 
+@SuppressWarnings("deprecation")
 public class ImageOutputWriter<K,V> extends MultipleOutputFormat<K,V> {
 
 	static protected class ImageRecordWriter<K,V> implements RecordWriter<K,V> {
@@ -35,6 +37,7 @@ public class ImageOutputWriter<K,V> extends MultipleOutputFormat<K,V> {
 	}
 
 
+	@Override
 	public RecordWriter<K,V> getBaseRecordWriter (FileSystem fs,
 						  JobConf job,
 						  String name,
