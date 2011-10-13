@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string>
 #include <sstream>
+#include <libgen.h>
 
 #include "hadoop/Pipes.hh"
 #include "hadoop/TemplateFactory.hh"
@@ -45,27 +46,54 @@ namespace HadoopUtils {
 
 class ImgProcMap: public HadoopPipes::Mapper {
 	public:
-		ImgProcMap(HadoopPipes::TaskContext& context){}
+		enum ImgAlgo {
+			SIFT = 0,
+			HISTOGRAM
+		};
+	public:
+		ImgProcMap(HadoopPipes::TaskContext& context) {
+			const HadoopPipes::JobConf *conf = context.getJobConf ();
+			HADOOP_ASSERT (conf != NULL, "There's no JobConf!");
+
+			bool hasAlgo = conf->hasKey ("multimodal.img.algo");
+			HADOOP_ASSERT (hasAlgo != false, "No image processing algorithm defined in conf file!");
+
+			algo = context.getJobConf ()->getInt ("multimodal.img.algo");
+		}
+
 		void map(HadoopPipes::MapContext& context) {
 			std::string k = context.getInputKey ();
 			std::string v = context.getInputValue ();
 			std::vector<char> img (v.begin (), v.end ());
 
-			Histogram h (4, 4, 3);
-			std::vector<double> hv;
-			h.getHSV (img, hv);
+			switch (algo) {
+				case SIFT:
+				{
+					/* do sift */
+					break;
+				}
 
-			// serialize to Java's VectorWritable
-			HadoopUtils::StringOutStream buf;
-			serializeDoubleVector(hv, buf);
-			context.emit (k, buf.str());
+				case HISTOGRAM:
+				{
+					Histogram h (4, 4, 3);
+					std::vector<double> hv;
+					h.getHSV (img, hv);
 
-			// Serialize to CSV row
-			//std::string hCVS;
-			//h.convertToCSV (hv, hCVS);
-			//context.emit (k, hCVS);
+					// serialize to Java's VectorWritable
+					HadoopUtils::StringOutStream buf;
+					serializeDoubleVector(hv, buf);
+					context.emit (k, buf.str());
+
+					break;
+				}
+				default:
+					/* should never ever get here! */
+					std::cerr << "undefined algorithm" << std::endl;
+			}
 		}
+
 	private:
+	int algo; /* image processing algorithm to run */
 	
   	static const int8_t FLAG_DENSE = 0x01;
         static const int8_t FLAG_SEQUENTIAL = 0x02;
@@ -172,10 +200,10 @@ class ImgReader: public HadoopPipes::RecordReader {
 			 * TODO: support for splitting images with ROI
 			 */
 			if (it != fList.end ()) {
-				key = *it;
+				std::string fname = *it;
 
 				/* open file from HDFS */
-				HDFSFile f (key);
+				HDFSFile f (fname);
 				if (!f.openRead () ) {
 					std::cerr << "could not open file: " << key << std::endl;
 				}
@@ -188,6 +216,10 @@ class ImgReader: public HadoopPipes::RecordReader {
 				std::string v (buf.begin (), buf.end ());
 				value = v;
 
+				/* set key as the base filename without the path and extension */
+				key = getBaseFilename (fname); 
+
+				/* clear the buffer */
 				buf.clear ();
 
 				/* get next one */
@@ -201,6 +233,18 @@ class ImgReader: public HadoopPipes::RecordReader {
 
 		virtual float getProgress () {
 			return 1.0f;
+		}
+	private:
+
+		std::string getBaseFilename (const std::string& fname) const {
+			/* remove path */
+			char * b = basename (const_cast<char*> (fname.c_str ()));
+			std::string baseName (const_cast<const char*> (b));
+
+			/* remove extension */
+			size_t extPos = baseName.find_last_of ('.');
+
+			return baseName.substr (0, extPos);
 		}
 };
 
