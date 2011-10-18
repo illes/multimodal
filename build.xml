@@ -16,7 +16,7 @@
 <property name="distDir" value="dist" />
 <property name="srcDir" value="src/java/" />
 <property name="jarFile" value="iclef2011.jar" />
-<property name="mainClass" value="org.learningformat.transform.PtbRawSentenceTransformer" />
+<property name="mainClass" value="" />
 
 
 <path id="classpath">
