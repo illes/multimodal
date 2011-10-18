@@ -7,7 +7,7 @@ Darwin_x86_64_ARCH := maci64
 Linux_i386_ARCH := glx
 Linux_i686_ARCH := glx
 Linux_unknown_ARC := glx
-Linux_x86_64_ARCH := a64
+Linux_x86_64_ARCH := glnxa64
 
 UNAME := $(shell uname -sm)
 ARCH ?= $($(shell echo "$(UNAME)" | tr \  _)_ARCH)
