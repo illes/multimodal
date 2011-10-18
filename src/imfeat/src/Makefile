@@ -23,10 +23,6 @@ CV_HOME=/home/wiking/opencv2.2
 JVM_HOME=/usr/lib/jvm/java-6-sun-1.6.0.26
 
 CC=g++
-FLANN_CFLAGS=`pkg-config --cflags flann`
-FLANN_LDFLAGS=`pkg-config --libs flann`
-HDF5_CFLAGS=-I/opt/local/include
-HDF5_LDFLAGS=-L/opt/local/lib -lhdf5
 
 HADOOP_CFLAGS=-I$(HADOOP_DIST)/include -I$(HADOOP_HOME)/src/c++/libhdfs
 HADOOP_LDFLAGS=-L$(HADOOP_DIST)/lib -lhadooppipes -lhadooputils -lpthread -lnsl -lcrypto /home/hadoop/hadoop-0.21.0/c++/Linux-amd64-64/lib/libhdfs.a
@@ -41,7 +37,7 @@ DAISY_CFLAGS=-I../daisy/include
 DAISY_LDFLAGS=../daisy/lib/libdaisy.a
 CV_CFLAGS=-I$(CV_HOME)/include -I$(CV_HOME)/include/opencv $(CFLAGS)
 CV_LDFLAGS=-L$(CV_HOME)/lib -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_video -lopencv_core -lopencv_calib3d -lopencv_video /usr/lib/libjpeg.a /usr/lib/libpng12.a /usr/lib/libjasper.a /usr/lib/libtiff.a /usr/lib/libz.a -lrt
-SOURCES=vldsift.cpp clusterer.cpp histogram.cpp skin_detector.cpp houghlines.cpp keypoints.cpp
+SOURCES=vldsift.cpp histogram.cpp skin_detector.cpp houghlines.cpp keypoints.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=vldsift cluster histogram detectsqr skin_detect houghlines keypoints
 
@@ -49,9 +45,6 @@ all: $(SOURCES) $(EXECUTABLE)
 
 vldsift: vldsift.o
 	$(CC) $(VL_CFLAGS) $< -o $@ $(VL_LDFLAGS)
-
-cluster: clusterer.o
-	$(CC) $(VL_CFLAGS) $< -o $@ $(VL_LDFLAGS) $(FLANN_LDFLAGS)
 
 histogram.o: histogram.cpp
 	$(CC) $(CV_CFLAGS) -c $<
