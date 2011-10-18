@@ -1,8 +1,12 @@
+#include <arpa/inet.h> // htons()
+
 #include <iostream>
+#include <cstring> // memcpy
 #include <stdint.h>
 #include <string>
 #include <sstream>
 #include <libgen.h>
+#include <vector>
 
 #include "hadoop/Pipes.hh"
 #include "hadoop/TemplateFactory.hh"
@@ -81,7 +85,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 
 					// serialize to Java's VectorWritable
 					HadoopUtils::StringOutStream buf;
-					serializeDoubleVector(hv, buf);
+					serializeFloatVector(hv, buf);
 					context.emit (k, buf.str());
 
 					break;
@@ -93,12 +97,12 @@ class ImgProcMap: public HadoopPipes::Mapper {
 		}
 	public:
 		static void test() {
-			std::vector<double> v = new std::vector<double>();
-			v.add(1.0);
-			v.add(-1.0);
+			std::vector<float> v = std::vector<float>();
+			v.push_back(1.0);
+			v.push_back(-1.0);
 			HadoopUtils::StringOutStream buf;
-	    		serializeDoubleVector(hv, buf);
-			std::out << buf.str();
+	    		serializeFloatVector(v, buf);
+			std::cout << buf.str();
 		}
 
 
@@ -118,11 +122,14 @@ class ImgProcMap: public HadoopPipes::Mapper {
 	 */
 	static void serializeFloatVector(std::vector<float> a, HadoopUtils::OutStream& stream)
 	{
-		int8_t flags = FLAG_DENSE;
+		int8_t flags = FLAG_DENSE | FLAG_SEQUENTIAL | FLAG_LAX_PRECISION;
 		stream.write(&flags, 1);
 		writeUnsignedVarInt(a.size(), stream);
+		uint32_t buf;
 		for ( std::vector<float>::const_iterator it = a.begin(); it != a.end(); ++it) {
-			stream.write(&(*it), 4);
+			memcpy(&buf, &(*it), 4);
+			buf = htonl(buf);
+			stream.write(&buf, 4);
 		}
 
 		return;
@@ -133,18 +140,22 @@ class ImgProcMap: public HadoopPipes::Mapper {
 	 *
 	 * @see org.apache.mahout.math.VectorWritable.writeVector(DataOutput, Vector, boolean)
 	 */
-	static void serializeDoubleVector(std::vector<double> a, HadoopUtils::OutStream& stream)
+	static void serializeFloatVector(std::vector<double> a, HadoopUtils::OutStream& stream)
 	{
-		int8_t flags = FLAG_DENSE | FLAG_LAX_PRECISION;
+		int8_t flags = FLAG_DENSE | FLAG_SEQUENTIAL | FLAG_LAX_PRECISION;
 		stream.write(&flags, 1);
 		writeUnsignedVarInt(a.size(), stream);
+		uint32_t buf;
+		float f;
 		for ( std::vector<double>::const_iterator it = a.begin(); it != a.end(); ++it) {
-			stream.write(&(*it), 8);
+			f = (float) (*it);
+			memcpy(&buf, &f, 4);
+			buf = htonl(buf);
+			stream.write(&buf, 4);
 		}
 
 		return;
 	}
-
 	static void writeUnsignedVarInt(int value, HadoopUtils::OutStream& out) {
 		int8_t buf;
 		while ((value & 0xFFFFFF80) != 0) {
@@ -272,9 +283,6 @@ class ImgWriter: public HadoopPipes::RecordWriter {
 };	
 
 int main (int argc, char **argv) {
-	if (argc == 0)
-		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce, void, void, ImgReader>());
-	else
-		ImgProcMap.test();
+	return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce, void, void, ImgReader>());
 }
 
