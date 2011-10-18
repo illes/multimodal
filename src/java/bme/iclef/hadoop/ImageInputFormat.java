@@ -10,7 +10,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.FileInputFormat;
@@ -19,9 +18,10 @@ import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
+import org.apache.mahout.math.Arrays;
 
 @SuppressWarnings("deprecation")
-public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
+public class ImageInputFormat extends FileInputFormat<Text, Text> {
 
 	public static final String FILES_PER_MAP = 
 		    "mapreduce.input.imageinputformat.filespermap";
@@ -30,6 +30,10 @@ public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 	static class TextArrayWritable extends ArrayWritable {
 		public TextArrayWritable() {
 			super(Text.class);
+		}
+
+		public TextArrayWritable(Text[] texts) {
+		    super(Text.class, texts);
 		}
 
 		@Override
@@ -52,21 +56,39 @@ public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 		ImageInputSplit() {}
 
 		ImageInputSplit(Text[] uris) {
-			this.list = new TextArrayWritable ();
-			this.list.set (uris);
+			this.list = new TextArrayWritable (uris);
 	       	}
 
+		public ImageInputSplit(DataInput in) throws IOException {
+		    	this.readFields(in);
+		}
+
+		@Override
 		public void write(DataOutput out) throws IOException { 
 			list.write (out);
 		}
 
+		@Override
 		public void readFields(DataInput in) throws IOException { 
 			list = new TextArrayWritable ();
 			list.readFields (in);
 		}
 
-		public long getLength() { return 0L; }
-		public String[] getLocations() { return new String[0]; }
+		@Override
+		public long getLength() { return list.get().length; }
+		
+		
+		/**
+		 * Translates the underlying Text[] to String[]
+		 */
+		public String[] getLocations() { 
+		    final Writable[] ori = list.get();
+		    final String[] locations = new String[ori.length];
+		    for (int i = 0; i < locations.length; i++) {
+			locations[i] = ((Text)(ori[i])).toString();
+		    }
+		    return locations;
+		}
 	}
 
 	@Override
@@ -90,23 +112,24 @@ public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 
 			numFilesPerSplit = numFiles/maxMapTasks;
 		}
-
-		for(Path dir: getInputPaths(conf)) {
-			List<Text> split = new ArrayList<Text> ();
-			long numFiles = 0;
-			for (FileStatus f: fs.listStatus (dir)) {
-				split.add (new Text (f.getPath ().toUri().getPath()));
-				numFiles ++;
-
-				if (numFiles == numFilesPerSplit) {
-					ImageInputSplit imgSplit = 
-						new ImageInputSplit (split.toArray (new Text[split.size ()]));
-					result.add (imgSplit);
-					numFiles = 0;
-					split.clear ();
-				}
-			}
-		}
+		System.err.println("DEBUG: numfilespersplit: " + numFilesPerSplit);					
+		
+        		for(Path dir: getInputPaths(conf)) {
+        			List<Text> split = new ArrayList<Text> ();
+        			for (FileStatus f: fs.listStatus (dir)) {
+        				split.add (new Text (f.getPath ().toUri().getPath()));
+					System.err.println("DEBUG: last: " + split.get(split.size()-1).toString());	        				
+        				if (split.size() == numFilesPerSplit) {
+        					ImageInputSplit imgSplit = 
+        						new ImageInputSplit (split.toArray (new Text[split.size ()]));
+        					System.err.println("DEBUG: split length: " + imgSplit.getLocations().length);	        				        					
+        					System.err.println("DEBUG: split: " + Arrays.toString(imgSplit.getLocations()));					
+        					result.add (imgSplit);
+        					split.clear ();
+        				}
+        			}
+        		}
+		System.err.println("DEBUG: " + Arrays.toString(result.toArray()));
 		return result.toArray(new InputSplit[result.size()]);
 	}
 
@@ -117,27 +140,14 @@ public class ImageInputFormat extends FileInputFormat<IntWritable, Text> {
 	}
 
 	@Override
-	public RecordReader<IntWritable, Text> getRecordReader(InputSplit split,
+	public RecordReader<Text, Text> getRecordReader(InputSplit split,
 							       JobConf conf, 
 							       Reporter reporter) {
-		return new RecordReader<IntWritable, Text>(){
-			public boolean next(IntWritable key, Text value) throws IOException {
-				return false;
-			}
-			public IntWritable createKey() {
-				return new IntWritable();
-			}
-			public Text createValue() {
-				return new Text();
-			}
-			public long getPos() {
-				return 0;
-			}
-			public void close() { }
-			public float getProgress() { 
-				return 0.0f;
-			}
-		};
+	    try {
+		return new TextFileRecordReader((ImageInputSplit)split, conf, reporter);
+	    } catch (IOException e) {
+		throw new RuntimeException(e);
+	    }
 	}
 
 }
