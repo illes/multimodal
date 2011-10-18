@@ -91,6 +91,16 @@ class ImgProcMap: public HadoopPipes::Mapper {
 					std::cerr << "undefined algorithm" << std::endl;
 			}
 		}
+	public:
+		static void test() {
+			std::vector<double> v = new std::vector<double>();
+			v.add(1.0);
+			v.add(-1.0);
+			HadoopUtils::StringOutStream buf;
+	    		serializeDoubleVector(hv, buf);
+			std::out << buf.str();
+		}
+
 
 	private:
 	int algo; /* image processing algorithm to run */
@@ -262,6 +272,9 @@ class ImgWriter: public HadoopPipes::RecordWriter {
 };	
 
 int main (int argc, char **argv) {
-	return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce, void, void, ImgReader>());
+	if (argc == 0)
+		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce, void, void, ImgReader>());
+	else
+		ImgProcMap.test();
 }
 
