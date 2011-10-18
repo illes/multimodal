@@ -1,5 +1,6 @@
 package bme.iclef.hadoop;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
@@ -10,7 +11,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
-import org.apache.mahout.math.Arrays;
 
 import bme.iclef.hadoop.ImageInputFormat.ImageInputSplit;
 
@@ -38,23 +38,35 @@ public class TextFileRecordReader implements RecordReader<Text, Text> {
 	fs = FileSystem.get(conf);
 	charset = Charset.forName(conf.get(
 		"mapreduce.input.textfilerecordreader.encoding", "UTF-8"));
-	System.err.println("DEBUG: c'tor " + Arrays.toString(files) );	
     }
 
     @Override
     public boolean next(Text key, Text value) throws IOException {
-	System.err.println("DEBUG: next" );
-	if (pos < files.length) {
-	    key.set(files[pos]); // TODO strip path and extension
-	    value.set(new String(IOUtils.toByteArray(fs.open(new Path(
-		    files[pos]))), charset));
-	    System.err.println("DEBUG: next: " + key +" => " + value );
-	    pos++;
-	    if (pos < files.length) {
-		return true;
-	    }
-	}
-	return false;
+	if (pos >= files.length)
+		return false;
+	
+	key.set(getFileBaseName(files[pos]));
+	value.set(new String(IOUtils.toByteArray(fs.open(new Path(files[pos]))), charset));
+	pos++;
+	return true;
+    }
+
+    /**
+     * Removes path and extension.
+     * @param path
+     * @return
+     */
+    private static String getFileBaseName(String path) {    
+	/* remove path */
+        String baseName = new File(path).getName();
+
+        /* remove extension */
+        final int extPos = baseName.lastIndexOf('.');
+        
+        if (extPos >= 0)
+            return baseName.substring(0, extPos);
+        else
+            return baseName;
     }
 
     @Override

@@ -23,7 +23,11 @@ import javax.xml.parsers.SAXParserFactory;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.FileInputFormat;
+import org.apache.hadoop.mapred.FileOutputFormat;
+import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
@@ -38,6 +42,8 @@ import org.xml.sax.XMLFilter;
 import org.xml.sax.XMLReader;
 
 import au.com.bytecode.opencsv.CSVWriter;
+import bme.iclef.hadoop.ImageInputFormat;
+import bme.iclef.hadoop.ImageOutputWriter;
 import bme.iclef.predict.Prediction.Label;
 import bme.iclef.representation.PMCArticle;
 import bme.iclef.representation.PMCArticle.Figure;
@@ -421,9 +427,6 @@ public class RegexPredictor extends Predictor {
 	public static class Mapper implements org.apache.hadoop.mapred.Mapper<Text, Text, Text, VectorWritable> {
 	    
 	    final RegexPredictor predictor;
-	    public static void main(String[] args) {
-		// TODO
-	    }
 	    
 	    public Mapper() throws IOException {
 		this.predictor = new RegexPredictor(null);
@@ -433,9 +436,8 @@ public class RegexPredictor extends Predictor {
 	    public void map(Text key, Text value,
 		    OutputCollector<Text, VectorWritable> output,
 		    Reporter reporter) throws IOException {
-		output.collect(
-			key,
-			new VectorWritable(predictor.match(value.toString())));
+		final Vector matches = predictor.match(value.toString());
+		output.collect(key, new VectorWritable(matches));
 	    }
 
 	    @Override
@@ -444,6 +446,43 @@ public class RegexPredictor extends Predictor {
 
 	    @Override
 	    public void close() throws IOException {
+	    }
+	    
+	    /**
+	     * Run a regex job.
+	     * @param args
+	     * @throws Exception
+	     */
+	    public static void main(String[] args) throws Exception {
+		
+		if (args.length != 2)
+		{
+		    System.err.println("Usage: \n java ...  <input_dir> <output_dir>");
+		}
+		
+		JobConf conf = new JobConf();
+		conf.setJobName("regextest");
+		
+		
+		conf.setInputFormat(ImageInputFormat.class);
+		conf.set(ImageInputFormat.FILES_PER_MAP, String.valueOf(100));
+			
+		conf.setMapperClass(RegexPredictor.Mapper.class);	
+			
+		conf.setMapOutputKeyClass(Text.class);
+		conf.setMapOutputValueClass(VectorWritable.class);
+
+		//conf.setReducerClass(IdentityReducer.class);
+
+		conf.setOutputKeyClass(Text.class);
+		conf.setOutputValueClass(VectorWritable.class);
+
+		conf.setOutputFormat(ImageOutputWriter.class);
+		
+		FileInputFormat.setInputPaths(conf, new Path(args[0]));
+		FileOutputFormat.setOutputPath(conf, new Path(args[1]));
+		
+		JobClient.runJob(conf);		
 	    }
 	}
 }
