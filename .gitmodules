@@ -1,0 +1,3 @@
+[submodule "src/imfeat/vlfeat"]
+	path = src/imfeat/vlfeat
+	url = git://github.com/vlfeat/vlfeat.git
