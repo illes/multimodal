@@ -264,8 +264,10 @@ class ImgReader: public HadoopPipes::RecordReader {
 
 			/* remove extension */
 			size_t extPos = baseName.find_last_of ('.');
-
-			return baseName.substr (0, extPos);
+			if (extPos >= 0)
+				return baseName.substr (0, extPos);
+			else
+				return baseName;
 		}
 };
 
