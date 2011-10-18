@@ -21,8 +21,9 @@ FLANN_CFLAGS=`pkg-config --cflags flann`
 FLANN_LDFLAGS=`pkg-config --libs flann`
 HDF5_CFLAGS=-I/opt/local/include
 HDF5_LDFLAGS=-L/opt/local/lib -lhdf5
+HADOOP_CFLAGS=-I$(HADOOP_HOME)/src/c++/libhdfs -I$(HADOOP_HOME)/src/c++/pipes/api
 
-CFLAGS ?= -Wall -g
+CFLAGS += -Wall -g
 VL_CFLAGS=-I../vlfeat $(HDF5_CFLAGS) $(CFLAGS)
 VL_LDFLAGS=../vlfeat/bin/$(ARCH)/libvl.a -lpthread
 DAISY_CFLAGS=-I../daisy/include
@@ -54,6 +55,9 @@ skin_detect: skin_detector.o
 	$(CC) $(CV_CFLAGS) $< -o $@ $(CV_LDFLAGS)
 
 houghlines: houghlines.o
+	$(CC) $(CV_CFLAGS) $< -o $@ $(CV_LDFLAGS)
+
+hadoop_wrapper: hadoop_wrapper.o
 	$(CC) $(CV_CFLAGS) $< -o $@ $(CV_LDFLAGS)
 
 .cpp.o:
