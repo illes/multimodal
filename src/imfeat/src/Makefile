@@ -77,7 +77,7 @@ HDFSFile.o: HDFSFile.cpp
 	$(CC) $(HADOOP_CFLAGS) $(JVM_CFLAGS) -c $<
 
 hadoop_wrapper: hadoop_wrapper.o HDFSFile.o histogram.o
-	$(CC) $^ -o $@ $(CV_LDFLAGS) $(HADOOP_LDFLAGS)
+	$(CC) $^ -o $@ $(CV_LDFLAGS) $(HADOOP_LDFLAGS) $(JVM_LDFLAGS)
 
 .cpp.o:
 	$(CC) $(CFLAGS) $(CV_CFLAGS) $(VL_CFLAGS) -c $<
