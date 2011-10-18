@@ -4,14 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
-import org.apache.http.util.EntityUtils;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpMethod;
+import org.apache.commons.httpclient.methods.GetMethod;
 
 /**
  * Fetch MeSH terms from NCBI's eutils access point.
@@ -26,10 +21,16 @@ public class EUtilsMeshFetcher implements MeshFetcher {
     final HttpClient httpClient;
 
     public EUtilsMeshFetcher() {
-	httpClient = new DefaultHttpClient();
-	final HttpParams httpParams = httpClient.getParams();
-	HttpConnectionParams.setConnectionTimeout(httpParams, 3000);
-	HttpConnectionParams.setSoTimeout(httpParams, 3000);
+	httpClient = new HttpClient();
+	
+	// HttpClient 4.x
+//	final HttpParams httpParams = httpClient.getParams();
+//	HttpConnectionParams.setConnectionTimeout(httpParams, 3000);
+//	HttpConnectionParams.setSoTimeout(httpParams, 3000);
+	
+	// HttpClient 3.x
+	httpClient.setConnectionTimeout(3000);
+	httpClient.setTimeout(3000);
     }
 
     /**
@@ -105,11 +106,15 @@ public class EUtilsMeshFetcher implements MeshFetcher {
 	// scanner.useDelimiter("\\Z");
 	// return scanner.next();
 
-	HttpGet httpget = new HttpGet(url);
-	HttpResponse response = httpClient.execute(httpget);
-	HttpEntity entity = response.getEntity();
-
-	return EntityUtils.toString(entity);
+	// HTTPClient 4.x
+//	HttpGet httpget = new HttpGet(url);
+//	HttpResponse response = httpClient.execute(httpget);
+//	HttpEntity entity = response.getEntity();
+//	return EntityUtils.toString(entity);
+	// HTTPClient 3.x
+	HttpMethod get = new GetMethod(url);
+	httpClient.executeMethod(get);
+	return get.getResponseBodyAsString();
     }
 
     public static void main(String[] args) {
