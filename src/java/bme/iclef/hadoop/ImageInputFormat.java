@@ -18,7 +18,6 @@ import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
-import org.apache.mahout.math.Arrays;
 
 @SuppressWarnings("deprecation")
 public class ImageInputFormat extends FileInputFormat<Text, Text> {
@@ -112,24 +111,25 @@ public class ImageInputFormat extends FileInputFormat<Text, Text> {
 
 			numFilesPerSplit = numFiles/maxMapTasks;
 		}
-		System.err.println("DEBUG: numfilespersplit: " + numFilesPerSplit);					
-		
-        		for(Path dir: getInputPaths(conf)) {
-        			List<Text> split = new ArrayList<Text> ();
-        			for (FileStatus f: fs.listStatus (dir)) {
-        				split.add (new Text (f.getPath ().toUri().getPath()));
-					System.err.println("DEBUG: last: " + split.get(split.size()-1).toString());	        				
-        				if (split.size() == numFilesPerSplit) {
-        					ImageInputSplit imgSplit = 
-        						new ImageInputSplit (split.toArray (new Text[split.size ()]));
-        					System.err.println("DEBUG: split length: " + imgSplit.getLocations().length);	        				        					
-        					System.err.println("DEBUG: split: " + Arrays.toString(imgSplit.getLocations()));					
-        					result.add (imgSplit);
-        					split.clear ();
-        				}
-        			}
-        		}
-		System.err.println("DEBUG: " + Arrays.toString(result.toArray()));
+       		for(Path dir: getInputPaths(conf)) {
+       			List<Text> split = new ArrayList<Text> ();
+       			for (FileStatus f: fs.listStatus (dir)) {
+       				split.add (new Text (f.getPath ().toUri().getPath()));
+  				if (split.size() == numFilesPerSplit) {
+   					ImageInputSplit imgSplit = 
+    						new ImageInputSplit (split.toArray (new Text[split.size ()]));
+    					result.add (imgSplit);
+   					split.clear ();
+    				}
+    			}
+       			// remainder 
+       			if (split.size() > 0) {
+				ImageInputSplit imgSplit = 
+					new ImageInputSplit (split.toArray (new Text[split.size ()]));
+				result.add (imgSplit);
+				split.clear();
+       			}
+    		}
 		return result.toArray(new InputSplit[result.size()]);
 	}
 
