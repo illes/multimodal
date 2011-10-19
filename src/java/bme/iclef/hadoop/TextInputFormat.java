@@ -9,9 +9,8 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
 
-// FIXME rename to BinaryFileInputformat
 @SuppressWarnings("deprecation")
-public class ImageInputFormat extends MultipleFileInputFormat<BytesWritable> {
+public class TextInputFormat extends MultipleFileInputFormat<Text> {
 
     public static final String FILES_PER_MAP = "mapreduce.input.imageinputformat.filespermap";
 
@@ -21,11 +20,10 @@ public class ImageInputFormat extends MultipleFileInputFormat<BytesWritable> {
     }
 
     @Override
-    public RecordReader<Text, BytesWritable> getRecordReader(InputSplit split,
+    public RecordReader<Text, Text> getRecordReader(InputSplit split,
 	    JobConf conf, Reporter reporter) {
 	try {
-	    return new BinaryFileRecordReader((MultipleFileInputSplit) split, conf,
-		    reporter);
+	    return new TextFileRecordReader((MultipleFileInputSplit)split, conf, reporter); 
 	} catch (IOException e) {
 	    throw new RuntimeException(e);
 	}

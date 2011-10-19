@@ -44,6 +44,7 @@ import org.xml.sax.XMLReader;
 import au.com.bytecode.opencsv.CSVWriter;
 import bme.iclef.hadoop.ImageInputFormat;
 import bme.iclef.hadoop.ImageOutputWriter;
+import bme.iclef.hadoop.TextInputFormat;
 import bme.iclef.predict.Prediction.Label;
 import bme.iclef.representation.PMCArticle;
 import bme.iclef.representation.PMCArticle.Figure;
@@ -464,8 +465,8 @@ public class RegexPredictor extends Predictor {
 		conf.setJobName("regextest");
 		
 		
-		conf.setInputFormat(ImageInputFormat.class);
-		conf.set(ImageInputFormat.FILES_PER_MAP, String.valueOf(100));
+		conf.setInputFormat(TextInputFormat.class);
+		conf.set(TextInputFormat.FILES_PER_MAP, String.valueOf(100));
 			
 		conf.setMapperClass(RegexPredictor.Mapper.class);	
 			

@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
@@ -23,11 +24,11 @@ import bme.iclef.hadoop.MultipleFileInputFormat.MultipleFileInputSplit;
  * 
  */
 @SuppressWarnings("deprecation")
-public class TextFileRecordReader extends MultipleFileRecordReader<Text> {
+public class BinaryFileRecordReader extends MultipleFileRecordReader<BytesWritable> {
 
     final Charset charset;
 
-    public TextFileRecordReader(MultipleFileInputSplit split, JobConf conf,
+    public BinaryFileRecordReader(MultipleFileInputSplit split, JobConf conf,
 	    Reporter reporter) throws IOException {
 	super(split, conf, reporter);
 	charset = Charset.forName(conf.get(
@@ -35,17 +36,21 @@ public class TextFileRecordReader extends MultipleFileRecordReader<Text> {
     }
     
     @Override
-    public boolean next(Text key, Text value) throws IOException {
+    public boolean next(Text key, BytesWritable value) throws IOException {
 	final String path = super.next(key);
         if (path == null)
         	return false;
         
-        value.set(new String(IOUtils.toByteArray(fs.open(new Path(path))), charset));
+        final byte[] contents = IOUtils.toByteArray(fs.open(new Path(path)));
+        
+        // FIXME dirty copying happens
+        // FIXME write custom DataInput to initialize BytesWritable through BytesWritable#readFields(DataInput) 
+        value.set(contents, 0, contents.length);
         return true;
     }
 
     @Override
-    public Text createValue() {
-	return new Text();
+    public BytesWritable createValue() {
+	return new BytesWritable();
     }
 }
