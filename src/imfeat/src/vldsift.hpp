@@ -7,6 +7,8 @@
 #include <cv.h>
 #include <highgui.h>
 
+#include "vl/dsift.h"
+
 #define VLDSIFT_DIM 128
 using namespace cv;
 using namespace std;

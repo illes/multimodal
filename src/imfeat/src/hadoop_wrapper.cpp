@@ -15,6 +15,7 @@
 
 #include "HDFSFile.h"
 #include "histogram.h"
+#include "vldsift.hpp"
 
 namespace HadoopUtils {
 	/** 
@@ -74,6 +75,22 @@ class ImgProcMap: public HadoopPipes::Mapper {
 				case SIFT:
 				{
 					/* do sift */
+					VLDSIFT dsift;
+
+					std::vector<std::vector<double> > descr;
+					dsift.getDSIFT (img, descr);
+
+					std::vector<std::vector<double> >::const_iterator it 
+						= descr.begin (), it_end = descr.end ();
+					for (int i = 0; it != it_end; it++, i++) {
+						char idx[10];
+						snprintf (idx, 9, ":%d",i); 
+						HadoopUtils::StringOutStream buf;
+						serializeFloatVector(*it, buf);
+						k.append (idx);
+						context.emit (k, buf.str ());
+					}
+
 					break;
 				}
 

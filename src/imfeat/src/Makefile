@@ -31,7 +31,7 @@ JVM_CFLAGS=-I$(JVM_HOME)/include -I$(JVM_HOME)/include/linux
 JVM_LDFLAGS=-L$(JVM_HOME)/jre/lib/amd64/server -ljvm
 
 CFLAGS += -Wall -g
-VL_CFLAGS=-I../vlfeat $(HDF5_CFLAGS) $(CFLAGS)
+VL_CFLAGS=-I../vlfeat
 VL_LDFLAGS=../vlfeat/bin/$(ARCH)/libvl.a -lpthread
 DAISY_CFLAGS=-I../daisy/include
 DAISY_LDFLAGS=../daisy/lib/libdaisy.a
@@ -65,13 +65,13 @@ houghlines: houghlines.o
 	$(CC) $(CV_CFLAGS) $< -o $@ $(CV_LDFLAGS)
 
 hadoop_wrapper.o: hadoop_wrapper.cpp
-	$(CC) $(JVM_CFLAGS) $(HADOOP_CFLAGS) $(CV_CFLAGS) -c $<
+	$(CC) $(JVM_CFLAGS) $(HADOOP_CFLAGS) $(CV_CFLAGS) $(VL_CFLAGS) -c $<
 
 HDFSFile.o: HDFSFile.cpp
 	$(CC) $(HADOOP_CFLAGS) $(JVM_CFLAGS) -c $<
 
 hadoop_wrapper: hadoop_wrapper.o HDFSFile.o histogram.o
-	$(CC) $^ -o $@ $(CV_LDFLAGS) $(HADOOP_LDFLAGS) $(JVM_LDFLAGS)
+	$(CC) $^ -o $@ $(CV_LDFLAGS) $(HADOOP_LDFLAGS) $(JVM_LDFLAGS) $(VL_LDFLAGS)
 
 .cpp.o:
 	$(CC) $(CFLAGS) $(CV_CFLAGS) $(VL_CFLAGS) -c $<
