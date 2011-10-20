@@ -109,10 +109,15 @@ public abstract class MultipleFileInputFormat<V> extends FileInputFormat<Text, V
 
 	    numFilesPerSplit = numFiles / maxMapTasks;
 	}
+	
 	for (Path dir : getInputPaths(conf)) {
 	    List<Text> split = new ArrayList<Text>();
 	    for (FileStatus f : fs.listStatus(dir)) {
-		split.add(new Text(f.getPath().toUri().getPath()));
+		if (f.isDir())
+		    throw new IllegalStateException("unhandled directory: '" + f.getPath() + "'");
+	        Path p = f.getPath();
+	        p.getFileSystem(conf); // test
+		split.add(new Text(p.toUri().getPath()));
 		if (split.size() == numFilesPerSplit) {
 		    MultipleFileInputSplit imgSplit = new MultipleFileInputSplit(split
 			    .toArray(new Text[split.size()]));
