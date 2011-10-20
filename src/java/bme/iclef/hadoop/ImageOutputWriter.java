@@ -77,7 +77,7 @@ public class ImageOutputWriter extends
 	FileSystem fileSys = fileOut.getFileSystem(job);
 	SequenceFile.Writer writer = SequenceFile.createWriter(fileSys, job,
 		fileOut, Text.class, VectorWritable.class);
-
+	System.err.println("DEBUG: SequenceFile.Writer: " + writer.getClass().getCanonicalName());
 	return new ImageRecordWriter(writer);
     }
 
