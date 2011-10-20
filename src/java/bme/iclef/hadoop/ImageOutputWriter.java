@@ -32,6 +32,7 @@ public class ImageOutputWriter extends
 	    out = writer;
 	}
 
+	@Override
 	public synchronized void write(Text key, VectorWritable value)
 		throws IOException {
 	    boolean nullKey = key == null;
@@ -47,31 +48,32 @@ public class ImageOutputWriter extends
 		    .toString())));
 	}
 
+	@Override
 	public synchronized void close(Reporter reporter) throws IOException {
-	    try {
-		if (out != null)
+	    if (out != null) {
+		try {
 		    out.close();
-	    } finally {
-		out = null;
+		} finally {
+		    out = null;
+		}
 	    }
-		
 	}
     }
 
     @Override
     protected String generateFileNameForKeyValue(Text key,
 	    VectorWritable value, String name) {
-	    /* use the key as filename */
-	    String fName = key.toString();
+	/* use the key as filename */
+	String fName = key.toString();
 
-	    /* handle multiple keys for one file */
-	    int sepPos = -1;
-	    if ((sepPos = fName.lastIndexOf(keyIndexSeparator)) != -1) {
-		/* remove key index suffix */
-		fName = fName.substring(0, sepPos);
-	    }
+	/* handle multiple keys for one file */
+	int sepPos = -1;
+	if ((sepPos = fName.lastIndexOf(keyIndexSeparator)) != -1) {
+	    /* remove key index suffix */
+	    fName = fName.substring(0, sepPos);
+	}
 
-	    return fName;
+	return fName;
     }
 
     @Override
@@ -82,7 +84,6 @@ public class ImageOutputWriter extends
 	FileSystem fileSys = fileOut.getFileSystem(job);
 	SequenceFile.Writer writer = SequenceFile.createWriter(fileSys, job,
 		fileOut, Text.class, VectorWritable.class);
-	System.err.println("DEBUG: SequenceFile.Writer: " + writer.getClass().getCanonicalName());
 	return new ImageRecordWriter(writer);
     }
 
