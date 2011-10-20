@@ -17,9 +17,9 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 
-
 @SuppressWarnings("deprecation")
-public abstract class MultipleFileInputFormat<V> extends FileInputFormat<Text, V> {
+public abstract class MultipleFileInputFormat<V> extends
+	FileInputFormat<Text, V> {
 
     public static class TextArrayWritable extends ArrayWritable {
 	public TextArrayWritable() {
@@ -94,6 +94,7 @@ public abstract class MultipleFileInputFormat<V> extends FileInputFormat<Text, V
 	/* get the number of files per splits */
 	long numFilesPerSplit = getNumFilesPerSplit(conf);
 	FileSystem fs = FileSystem.get(conf);
+	System.err.println("DEBUG: fs.getUri():\t" + fs.getUri());
 
 	/*
 	 * if it's 0 it means that we want to split whole process into that many
@@ -109,15 +110,13 @@ public abstract class MultipleFileInputFormat<V> extends FileInputFormat<Text, V
 
 	    numFilesPerSplit = numFiles / maxMapTasks;
 	}
-	
 	for (Path dir : getInputPaths(conf)) {
 	    List<Text> split = new ArrayList<Text>();
 	    for (FileStatus f : fs.listStatus(dir)) {
-		if (f.isDir())
-		    throw new IllegalStateException("unhandled directory: '" + f.getPath() + "'");
-	        Path p = f.getPath();
-	        p.getFileSystem(conf); // test
-		split.add(new Text(p.toUri().getPath()));
+		System.err.println("DEBUG: getPath():\t" + f.getPath());
+		System.err.println("DEBUG: getPath().toUri():\t" + f.getPath().toUri());
+		System.err.println("DEBUG: getPath().toUri().getPath():\t" + f.getPath().toUri().getPath());
+		split.add(new Text(f.getPath().toUri().getPath()));
 		if (split.size() == numFilesPerSplit) {
 		    MultipleFileInputSplit imgSplit = new MultipleFileInputSplit(split
 			    .toArray(new Text[split.size()]));
@@ -136,7 +135,6 @@ public abstract class MultipleFileInputFormat<V> extends FileInputFormat<Text, V
 	return result.toArray(new InputSplit[result.size()]);
     }
 
-    
     abstract protected int getNumFilesPerSplit(JobConf conf);
 
     public void validateInput(JobConf conf) {
