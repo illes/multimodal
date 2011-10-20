@@ -56,10 +56,8 @@ public class ImageOutputWriter extends
     @Override
     protected String generateFileNameForKeyValue(Text key,
 	    VectorWritable value, String name) {
-	/* use the key as filename */
-	if (key.getClass() == Text.class) {
-	    Text k = (Text) key;
-	    String fName = k.toString();
+	    /* use the key as filename */
+	    String fName = key.toString();
 
 	    /* handle multiple keys for one file */
 	    int sepPos = -1;
@@ -69,9 +67,6 @@ public class ImageOutputWriter extends
 	    }
 
 	    return fName;
-	}
-
-	return super.generateFileNameForKeyValue(key, value, name);
     }
 
     @Override
