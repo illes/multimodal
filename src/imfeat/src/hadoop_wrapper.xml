@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<configuration>
+
+	<!-- 
+	     non-user options 
+	-->
+	<property>
+		<!-- Set the binary path on DFS -->
+		<name>hadoop.pipes.executable</name>
+		<value>/bin/hadoop_wrapper</value>
+	</property>
+	<property>
+		<name>hadoop.pipes.java.recordreader</name>
+		<value>false</value>
+	</property>
+	<property>
+		<name>hadoop.pipes.java.recordwriter</name>
+		<value>true</value>
+	</property>
+	
+	<property>
+		<name>mapred.output.key.class</name>
+		<value>org.apache.hadoop.io.Text</value>
+	</property>
+	<property>
+		<name>mapred.output.value.class</name>
+		<value>org.apache.mahout.math.VectorWritable</value>
+	</property>
+
+	<property>
+		<name>mapred.mapoutput.key.class</name>
+		<value>org.apache.hadoop.io.Text</value>
+	</property>
+	<property>
+		<name>mapred.mapoutput.value.class</name>
+		<value>org.apache.mahout.math.VectorWritable</value>
+	</property>
+
+
+	<!-- 
+	     user options 
+	-->
+	<property>
+		<name>mapreduce.input.imageinputformat.filespermap</name>
+		<value>10</value>
+	</property>
+	<property>
+		<name>multimodal.img.algo</name>
+		<value>1</value>
+	</property>
+
+	<property>
+		<!--
+		     	A comma separated list of LIRE feature extractors to invoke. Feature vectors are concatenated.
+			See also: http://www.semanticmetadata.net/wiki/doku.php?id=lire:lire
+			Commonly used:
+			    * CEDD,Tamura,AutoColorCorrelogram,EdgeHistogram,FCTH
+			Also available:
+			    * ColorLayout,FuzzyColorHistogram,Gabor,GeneralColorLayout,HSVColorHistogram,JCD,JpegCoefficientHistogram,ColorLayout,SimpleColorHistogram
+		-->
+		<name>multimodal.lire.extractors</name>
+		<value>CEDD,Tamura,AutoColorCorrelogram,EdgeHistogram,FCTH</value>
+	</property>
+	<!--
+	<property>
+		<name>mapred.jar</name>
+		<value>/home/hadoop/multimodal/dist/iclef2011.jar</value>
+	</property>
+	-->
+</configuration>

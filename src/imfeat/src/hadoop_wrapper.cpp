@@ -83,12 +83,13 @@ class ImgProcMap: public HadoopPipes::Mapper {
 					std::vector<std::vector<double> >::const_iterator it 
 						= descr.begin (), it_end = descr.end ();
 					for (int i = 0; it != it_end; it++, i++) {
+						std::string key = k;
 						char idx[10];
 						snprintf (idx, 9, ":%d",i); 
 						HadoopUtils::StringOutStream buf;
 						serializeFloatVector(*it, buf);
-						k.append (idx);
-						context.emit (k, buf.str ());
+						key.append (idx);
+						context.emit (key, buf.str ());
 					}
 
 					break;
