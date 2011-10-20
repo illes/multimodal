@@ -7,6 +7,7 @@
 #include <sstream>
 #include <libgen.h>
 #include <vector>
+#include <stdexcept>
 
 #include "hadoop/Pipes.hh"
 #include "hadoop/TemplateFactory.hh"
@@ -158,9 +159,11 @@ class ImgProcMap: public HadoopPipes::Mapper {
 	 *
 	 * @see org.apache.mahout.math.VectorWritable.writeVector(DataOutput, Vector, boolean)
 	 */
-	static void serializeFloatVector(std::vector<double> a, HadoopUtils::OutStream& stream)
+	static void serializeFloatVector(std::vector<double> a, HadoopUtils::OutStream& stream, std::string* name = NULL)
 	{
-		int8_t flags = FLAG_DENSE | FLAG_SEQUENTIAL | FLAG_LAX_PRECISION;
+		uint8_t flags = FLAG_DENSE | FLAG_SEQUENTIAL | FLAG_LAX_PRECISION;
+		if (name != NULL)
+			flags |= FLAG_NAMED;
 		stream.write(&flags, 1);
 		writeUnsignedVarInt(a.size(), stream);
 		uint32_t buf;
@@ -171,7 +174,17 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			buf = htonl(buf);
 			stream.write(&buf, 4);
 		}
-
+		if (name != NULL)
+		{
+			const char* str = name->c_str(); // FIXME UTF-8 conversion
+			size_t len = strlen(str);
+			if (len > 65535)
+				throw std::overflow_error("Name length overflow");
+			uint16_t tmp = len;
+			lens = htons(tmp);
+			stream.write(&tmp, 2);
+			stream.write(str, len);
+		}
 		return;
 	}
 	static void writeUnsignedVarInt(int value, HadoopUtils::OutStream& out) {
