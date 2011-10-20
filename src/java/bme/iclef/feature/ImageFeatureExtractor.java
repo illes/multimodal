@@ -36,6 +36,15 @@ import org.apache.mahout.math.VectorWritable;
 import bme.iclef.hadoop.ImageInputFormat;
 import bme.iclef.hadoop.ImageOutputWriter;
 
+/**
+ * 	    "CEDD,Tamura,AutoColorCorrelogram,EdgeHistogram,FCTH"
+ *	    "ColorLayout,FuzzyColorHistogram,Gabor,GeneralColorLayout,HSVColorHistogram,JCD,JpegCoefficientHistogram,ColorLayout,SimpleColorHistogram"
+ *
+ * @see <a href='http://www.semanticmetadata.net/wiki/doku.php?id=lire:lire'>LireWiki</a>
+ * @author Illes Solt
+ * @author Viktor Gal
+ *
+ */
 public class ImageFeatureExtractor {
 
     private static class ImgFeatures {
@@ -233,6 +242,11 @@ public class ImageFeatureExtractor {
 	}
     }
 
+    /**
+     * A Hadoop wrapper for image feature extractors ({@link LireFeature}). 
+     * @author illes
+     *
+     */
     public static class Mapper
 	    implements
 	    org.apache.hadoop.mapred.Mapper<Text, BytesWritable, Text, VectorWritable> {
@@ -308,8 +322,6 @@ public class ImageFeatureExtractor {
 	    conf.set(ImageFeatureExtractor.Mapper.EXTRACTOR_NAME,
 		    "cedd,tamura,edgehist,fcth,autocor");
 	    
-	    "CEDD,Tamura,AutoColorCorrelogram,EdgeHistogram,FCTH"
-	    "ColorLayout,FuzzyColorHistogram,Gabor,GeneralColorLayout,HSVColorHistogram,JCD,JpegCoefficientHistogram,ColorLayout,SimpleColorHistogram"
 
 	    conf.setMapOutputKeyClass(Text.class);
 	    conf.setMapOutputValueClass(VectorWritable.class);
