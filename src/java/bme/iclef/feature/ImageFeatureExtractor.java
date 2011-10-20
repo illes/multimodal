@@ -29,6 +29,7 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.SequentialAccessSparseVector;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 
@@ -55,36 +56,65 @@ public class ImageFeatureExtractor {
 	else if (extrMode.compareToIgnoreCase("autocor") == 0)
 	    return net.semanticmetadata.lire.imageanalysis.AutoColorCorrelogram.class;
 	else
-	    throw new IllegalArgumentException("Unrecognized name '" + extrMode
-		    + "'");
+	{
+	    try {
+		return Class.forName("net.semanticmetadata.lire.imageanalysis." + extrMode).asSubclass(LireFeature.class);
+	    } catch (Exception e) {
+		throw new RuntimeException("Failed to initialize extractor '" +extrMode +"'", e); 
+	    }
+	}
     }
-    
+
+    protected static double[] extactFeatures(final LireFeature extractor,
+	    final BufferedImage img) {
+	extractor.extract(img);
+	return parseExtractorStringRepresentation(extractor.getStringRepresentation());
+    }
+
     /**
-     * Example tring representation:
-     * <pre>tamura 18 3.5211693548387095 6.026702360565828 796.0 130.0 163.0 271.0 158.0 188.0 123.0 356.0 177.0 152.0 177.0 328.0 183.0 182.0 141.0 195.0</pre>
+     * Example string representation:
+     * 
+     * <pre>
+     * tamura 18 3.5211693548387095 6.026702360565828 796.0 130.0 163.0 271.0 158.0 188.0 123.0 356.0 177.0 152.0 177.0 328.0 183.0 182.0 141.0 195.0
+     * edgehistogram;7 0 1 3 0 4 0 0 0 0 3 0 0 0 0 7 0 0 0 0 7 0 0 2 0 1 0 0 0 0 3 0 0 0 0 7 0 0 1 0 7 0 2 0 1 0 0 0 0 0 4 0 0 0 0 7 0 1 1 0 5 2 5 6 1 0 0 0 0 0 3 2 3 0 1 6 1 1 6 0
+     * 4 1.0 1.0 1.0 1.0 0.4843978 0.48311055 0.48188472 0.48068672 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+     * </pre>
+     * 
      * @param extractor
      * @param img
      * @param v
      * @return
      */
-    protected static Vector extactFeatures(LireFeature extractor, BufferedImage img)
-    {
-	extractor.extract(img);
-	final String str = extractor.getStringRepresentation();
-	final StringTokenizer st = new StringTokenizer(str, " ");
-	
-	final String name = st.nextToken();
-	final int numFeatures = Integer.parseInt(st.nextToken());
-	
-	
-	Vector v = new DenseVector(numFeatures);
-	int i = 0;
-	while (st.hasMoreTokens()) {
-	    v.set(i++, Double.parseDouble(st.nextToken()));
+    private static double[] parseExtractorStringRepresentation(final String str) {
+	try {
+	    StringTokenizer st = new StringTokenizer(str, " ;");
+
+	    final String name = st.nextToken();
+
+	    final int numFeatures;
+	    if (name.equals("edgehistogram")) {
+		numFeatures = st.countTokens();
+	    } else if (name.matches("[^A-Za-z]*")) {
+		st = new StringTokenizer(str, " ");
+		numFeatures = st.countTokens();
+	    } else {
+		numFeatures = Integer.parseInt(st.nextToken());
+	    }
+	    
+	    double[] v = new double[numFeatures];
+	    int i = 0;
+	    while (st.hasMoreTokens()) {
+		v[i++] = Double.parseDouble(st.nextToken());
+	    }
+	    if (i != numFeatures)
+		throw new IllegalStateException(
+			"Wrong number of elements in string representation: '"
+				+ str + "'");
+	    return v;
+	} catch (Exception e) {
+	    throw new RuntimeException("Error parsing string representation. '"
+		    + str + "'", e);
 	}
-	if (i!=numFeatures)
-	    throw new IllegalStateException("Wrong number of elements in string representation: '" + str +"'");
-	return v;
     }
 
     public static void main(String[] args) throws IOException,
@@ -137,7 +167,6 @@ public class ImageFeatureExtractor {
 	    }
 
 	    es.shutdown();
-
 	} catch (Exception e) {
 	    System.err.println("ERROR: " + e.getMessage());
 	    e.printStackTrace();
@@ -204,13 +233,12 @@ public class ImageFeatureExtractor {
 	}
     }
 
-    @SuppressWarnings("deprecation")
     public static class Mapper
 	    implements
 	    org.apache.hadoop.mapred.Mapper<Text, BytesWritable, Text, VectorWritable> {
 
-	public static final String EXTRACTOR_NAME = "mapreduce.map.lirefeatureextractor.extractor.name";
-	LireFeature extractor = null;
+	public static final String EXTRACTOR_NAME = "multimodal.lire.extractors";
+	LireFeature[] extractors = null;
 
 	@Override
 	public void map(Text key, BytesWritable value,
@@ -219,10 +247,42 @@ public class ImageFeatureExtractor {
 	    final BufferedImage img = ImageIO.read(new ByteArrayInputStream(
 		    value.getBytes(), 0, value.getLength()));
 
-	    // FIXME replace null with Vector
-	    Vector features = ImageFeatureExtractor.extactFeatures(extractor, img);
+	    double[] features[] = new double[extractors.length][];
+	    for (int i = 0; i < extractors.length; i++) {
+		features[i] = ImageFeatureExtractor.extactFeatures(
+			extractors[i], img);
+	    }
 	    
-	    output.collect(key, new VectorWritable(features));
+	    Vector combinedFeatureVector = new DenseVector(concatenate(features));
+	    
+	    // use sparse storage if there are many zeros
+	    if (combinedFeatureVector.size() > 10 && combinedFeatureVector.getNumNondefaultElements() < combinedFeatureVector.size()/4)
+		combinedFeatureVector = new SequentialAccessSparseVector(combinedFeatureVector);
+	    output.collect(key, new VectorWritable(combinedFeatureVector));
+	}
+
+	/**
+	 * Concatenate arrays into a single array.
+	 * 
+	 * @param arrayOfArrays
+	 * @return
+	 */
+	private static double[] concatenate(double[][] arrayOfArrays) {
+	    final double[] ret;
+	    {
+		int length = 0;
+		for (double[] sub : arrayOfArrays)
+		    length += sub.length;
+		ret = new double[length];
+	    }
+	    // populate
+	    int offset = 0;
+	    for (int i = 0; i < arrayOfArrays.length; i++) {
+		System.arraycopy(arrayOfArrays[i], 0, ret, offset,
+			arrayOfArrays[i].length);
+		offset += arrayOfArrays[i].length;
+	    }
+	    return ret;
 	}
 
 	/**
@@ -243,10 +303,13 @@ public class ImageFeatureExtractor {
 
 	    conf.setInputFormat(ImageInputFormat.class);
 	    conf.set(ImageInputFormat.FILES_PER_MAP, String.valueOf(10));
-	    
 
 	    conf.setMapperClass(ImageFeatureExtractor.Mapper.class);
-	    conf.set(ImageFeatureExtractor.Mapper.EXTRACTOR_NAME, "tamura");
+	    conf.set(ImageFeatureExtractor.Mapper.EXTRACTOR_NAME,
+		    "cedd,tamura,edgehist,fcth,autocor");
+	    
+	    "CEDD,Tamura,AutoColorCorrelogram,EdgeHistogram,FCTH"
+	    "ColorLayout,FuzzyColorHistogram,Gabor,GeneralColorLayout,HSVColorHistogram,JCD,JpegCoefficientHistogram,ColorLayout,SimpleColorHistogram"
 
 	    conf.setMapOutputKeyClass(Text.class);
 	    conf.setMapOutputValueClass(VectorWritable.class);
@@ -267,11 +330,16 @@ public class ImageFeatureExtractor {
 	@Override
 	public void configure(JobConf job) {
 	    try {
-		extractor = forName(
-			job
-				.get(
-					EXTRACTOR_NAME,
-					"cedd")).newInstance();
+		String[] extractorNames = job.get(EXTRACTOR_NAME, "cedd")
+			.split(",");
+
+		if (extractorNames.length == 0)
+		    throw new IllegalArgumentException(
+			    "empty extractors, check '" + EXTRACTOR_NAME + "'");
+
+		extractors = new LireFeature[extractorNames.length];
+		for (int i = 0; i < extractorNames.length; i++)
+		    extractors[i] = forName(extractorNames[i]).newInstance();
 	    } catch (InstantiationException e) {
 		throw new RuntimeException(e);
 	    } catch (IllegalAccessException e) {
@@ -281,7 +349,7 @@ public class ImageFeatureExtractor {
 
 	@Override
 	public void close() throws IOException {
-	    extractor = null;
+	    extractors = null;
 	}
 
     }
