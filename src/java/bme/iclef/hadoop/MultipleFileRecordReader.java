@@ -11,7 +11,6 @@ import org.apache.hadoop.mapred.Reporter;
 
 import bme.iclef.hadoop.MultipleFileInputFormat.MultipleFileInputSplit;
 
-@SuppressWarnings("deprecation")
 public abstract class MultipleFileRecordReader<V> implements
 	RecordReader<Text, V> {
 
@@ -21,7 +20,7 @@ public abstract class MultipleFileRecordReader<V> implements
 
     public MultipleFileRecordReader(MultipleFileInputSplit split, JobConf conf,
 	    Reporter reporter) throws IOException {
-	files = split.getLocations();
+	files = split.getPaths();
 	pos = 0;
 	fs = FileSystem.get(conf);
     }

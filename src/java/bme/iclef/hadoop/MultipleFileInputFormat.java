@@ -17,7 +17,6 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 
-@SuppressWarnings("deprecation")
 public abstract class MultipleFileInputFormat<V> extends
 	FileInputFormat<Text, V> {
 
@@ -77,13 +76,18 @@ public abstract class MultipleFileInputFormat<V> extends
 	/**
 	 * Translates the underlying Text[] to String[]
 	 */
-	public String[] getLocations() {
+	public String[] getPaths() {
 	    final Writable[] ori = list.get();
 	    final String[] locations = new String[ori.length];
 	    for (int i = 0; i < locations.length; i++) {
 		locations[i] = ((Text) (ori[i])).toString();
 	    }
 	    return locations;
+	}
+
+	@Override
+	public String[] getLocations() throws IOException {
+	    return new String[0];
 	}
     }
 
@@ -94,7 +98,6 @@ public abstract class MultipleFileInputFormat<V> extends
 	/* get the number of files per splits */
 	long numFilesPerSplit = getNumFilesPerSplit(conf);
 	FileSystem fs = FileSystem.get(conf);
-	System.err.println("DEBUG: fs.getUri():\t" + fs.getUri());
 
 	/*
 	 * if it's 0 it means that we want to split whole process into that many
@@ -113,9 +116,6 @@ public abstract class MultipleFileInputFormat<V> extends
 	for (Path dir : getInputPaths(conf)) {
 	    List<Text> split = new ArrayList<Text>();
 	    for (FileStatus f : fs.listStatus(dir)) {
-		System.err.println("DEBUG: getPath():\t" + f.getPath());
-		System.err.println("DEBUG: getPath().toUri():\t" + f.getPath().toUri());
-		System.err.println("DEBUG: getPath().toUri().getPath():\t" + f.getPath().toUri().getPath());
 		split.add(new Text(f.getPath().toUri().getPath()));
 		if (split.size() == numFilesPerSplit) {
 		    MultipleFileInputSplit imgSplit = new MultipleFileInputSplit(split
