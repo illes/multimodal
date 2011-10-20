@@ -18,7 +18,6 @@ import org.apache.mahout.math.NamedVector;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 
-@SuppressWarnings("deprecation")
 public class ImageOutputWriter extends
 	MultipleOutputFormat<Text, VectorWritable> {
 
@@ -27,7 +26,7 @@ public class ImageOutputWriter extends
     static protected class ImageRecordWriter implements
 	    RecordWriter<Text, VectorWritable> {
 
-	private final SequenceFile.Writer out;
+	private SequenceFile.Writer out;
 
 	public ImageRecordWriter(SequenceFile.Writer writer) {
 	    out = writer;
@@ -49,7 +48,13 @@ public class ImageOutputWriter extends
 	}
 
 	public synchronized void close(Reporter reporter) throws IOException {
-	    out.close();
+	    try {
+		if (out != null)
+		    out.close();
+	    } finally {
+		out = null;
+	    }
+		
 	}
     }
 
@@ -113,7 +118,6 @@ public class ImageOutputWriter extends
 	// >> 4] ) ).append(
 	// ( char ) ( HEX_CHAR[buffer[i] & 0x000F] ) ).append( " " );
 	// }
-
     }
 
     public static void main(String[] args) throws Exception {
