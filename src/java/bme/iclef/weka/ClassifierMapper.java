@@ -10,7 +10,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
-import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
 
 import weka.classifiers.Classifier;
@@ -36,8 +35,9 @@ public class ClassifierMapper implements
 	    OutputCollector<Text, Text> output, Reporter reporter)
 	    throws IOException {
 	try {
-	    Instance inst = vectorToInstance(value.get());
-	    sanityCheck(inst);
+	    Instance inst = SequenceFileLoader.vectorToInstance(value.get());
+	    if(!instances.checkInstance(inst))
+		throw new IllegalStateException("incompatible intance from vector: '" + key + "' => " + inst.toString());
 	    inst.setDataset(instances);
 	    int classValueIndex = (int) classifier.classifyInstance(inst);
 	    String classLabel = instances.classAttribute().value(classValueIndex);
@@ -47,29 +47,6 @@ public class ClassifierMapper implements
 	}
     }
 
-    private void sanityCheck(Instance inst) {
-	if (inst.numAttributes() != instances.numAttributes())
-	    throw new IllegalStateException("attribute count mismatch, got: "
-		    + inst.numAttributes() + ", expected: "
-		    + instances.numAttributes());
-    }
-
-    /**
-     * Converts a Mahout {@link Vector} to a Weka {@link Instance}. Adds an
-     * empty first and last column.
-     * 
-     * @param v
-     * @return
-     */
-    private static Instance vectorToInstance(Vector v) {
-	final Instance inst = new Instance(v.size() + 2);
-	inst.setValue(0, Instance.missingValue()); // 0: id column
-	for (int i = 0; i < v.size(); i++) {
-	    inst.setValue(i + 1, v.get(i)); // 1..(n-1): value columns
-	}
-	inst.setValue(0, inst.numAttributes() - 1); // n: label column
-	return inst;
-    }
 
     @Override
     public void configure(JobConf job) {
