@@ -23,7 +23,6 @@ import bme.iclef.hadoop.MultipleFileInputFormat.MultipleFileInputSplit;
  * @author Illes Solt
  * 
  */
-@SuppressWarnings("deprecation")
 public class BinaryFileRecordReader extends MultipleFileRecordReader<BytesWritable> {
 
     final Charset charset;
@@ -43,8 +42,8 @@ public class BinaryFileRecordReader extends MultipleFileRecordReader<BytesWritab
         
         final byte[] contents = IOUtils.toByteArray(fs.open(new Path(path)));
         
-        // FIXME dirty copying happens
-        // FIXME write custom DataInput to initialize BytesWritable through BytesWritable#readFields(DataInput) 
+        // dirty copying happens inside BytesWritable.set()
+        // FIXME write custom DataInput to initialize BytesWritable through BytesWritable#readFields(DataInput) or create a custom Writable.
         value.set(contents, 0, contents.length);
         return true;
     }
