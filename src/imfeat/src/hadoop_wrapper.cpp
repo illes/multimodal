@@ -120,7 +120,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			v.push_back(1.0);
 			v.push_back(-1.0);
 			HadoopUtils::StringOutStream buf;
-	    		serializeFloatVector(v, buf);
+	    		serializeFloatVector(v, buf, "hello");
 			std::cout << buf.str();
 		}
 
@@ -159,7 +159,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 	 *
 	 * @see org.apache.mahout.math.VectorWritable.writeVector(DataOutput, Vector, boolean)
 	 */
-	static void serializeFloatVector(std::vector<double> a, HadoopUtils::OutStream& stream, std::string* name = NULL)
+	static void serializeFloatVector(const std::vector<double> a, HadoopUtils::OutStream& const stream, const char* const name = NULL, int strlen = -1)
 	{
 		uint8_t flags = FLAG_DENSE | FLAG_SEQUENTIAL | FLAG_LAX_PRECISION;
 		if (name != NULL)
@@ -176,17 +176,26 @@ class ImgProcMap: public HadoopPipes::Mapper {
 		}
 		if (name != NULL)
 		{
-			const char* str = name->c_str(); // FIXME UTF-8 conversion
-			size_t len = strlen(str);
-			if (len > 65535)
+			if (strlen == -1)
+				strlen = strlen(name);
+			if (strlen > 65535)
 				throw std::overflow_error("Name length overflow");
-			uint16_t tmp = len;
+			// look for character codes over 127 (0x7F)
+			for (int i = 0; i < strlen; i++)
+			{
+				if (name[i] & 0x80)
+					throw std::overflow_error("Name character code overflow (non-ASCII-7 not implemented yet)");
+				if (name[i] == '\0')
+					throw std::underflow_error("Name character code underflow (zero '\\0' not supported yet)");
+			}
+			uint16_t tmp = strlen;
 			lens = htons(tmp);
 			stream.write(&tmp, 2);
 			stream.write(str, len);
 		}
 		return;
 	}
+
 	static void writeUnsignedVarInt(int value, HadoopUtils::OutStream& out) {
 		int8_t buf;
 		while ((value & 0xFFFFFF80) != 0) {
@@ -316,6 +325,9 @@ class ImgWriter: public HadoopPipes::RecordWriter {
 };	
 
 int main (int argc, char **argv) {
-	return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce, void, void, ImgReader>());
+	if (argc == 1 && strcmp(argv[0], "test") == 0)
+		ImgProcMap::test();
+	else
+		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce, void, void, ImgReader>());
 }
 
