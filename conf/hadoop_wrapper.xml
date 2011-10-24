@@ -11,7 +11,7 @@
 	</property>
 	<property>
 		<name>hadoop.pipes.java.recordreader</name>
-		<value>false</value>
+		<value>true</value>
 	</property>
 	<property>
 		<name>hadoop.pipes.java.recordwriter</name>
@@ -46,7 +46,7 @@
 	</property>
 	<property>
 		<name>multimodal.img.algo</name>
-		<value>1</value>
+		<value>0</value>
 	</property>
 
 	<property>
@@ -67,4 +67,9 @@
 		<value>/home/hadoop/multimodal/dist/iclef2011.jar</value>
 	</property>
 	-->
+	<!-- enable compressio -->
+	<property>
+		<name>mapred.output.compression.type</name>
+		<value>BLOCK</value>
+	</property>
 </configuration>
