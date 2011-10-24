@@ -18,22 +18,24 @@ import org.apache.mahout.math.VectorWritable;
  *
  */
 public class VectorNamingOutputFormat extends SequenceFileOutputFormat<Text, VectorWritable> {
-
+    
     @Override
     public RecordWriter<Text, VectorWritable> getRecordWriter(
             FileSystem ignored, JobConf job, String name, Progressable progress)
             throws IOException {
         
-	System.err.println("COMPRESSION: " +super.getOutputCompressionType(job));
         final RecordWriter<Text, VectorWritable> out = super.getRecordWriter(ignored, job, name, progress);
+        final boolean writesLaxPrecision = job.getBoolean("multimodal.vectornaming.laxprecision", false);
         
         return new RecordWriter<Text, VectorWritable>() {
-
 
 	    @Override
 	    public void write(Text key, VectorWritable value)
 		    throws IOException {
-	    	out.write(key, new VectorWritable(new NamedVector(value.get(), key.toString())));
+		VectorWritable named = new VectorWritable(new NamedVector(value.get(), key.toString()));
+		named.setWritesLaxPrecision(writesLaxPrecision);
+		
+	    	out.write(key, named);
 	    }
 	    
 	    @Override
