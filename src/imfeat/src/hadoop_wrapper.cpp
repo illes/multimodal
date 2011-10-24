@@ -225,18 +225,45 @@ static void deserializeTextArrayWritable (const std::string& data, std::vector<s
 	HadoopUtils::StringInStream stream (data);
 	/* For some reason deserializeInt does not work, so going with our own implementation */
 //	int32_t size = HadoopUtils::deserializeInt (stream);
-	char b[4];
-	for (int i = 0; i < 4; ++i) {
-		stream.read (&b[i], 1);
-	}
-	int32_t size = ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
+	int32_t size = deserializeInt(stream);
 	int i = 0;
 	while (i++ < size) {
 		std::string fname;
 		HadoopUtils::deserializeString (fname, stream);
 		tv.push_back (fname);
 	}
+}
 
+static int32_t deserializeInt (HadoopUtils::InStream &stream) {
+	/* For some reason deserializeInt does not work, so going with our own implementation */
+//	int32_t size = HadoopUtils::deserializeInt (stream);
+	char b[4];
+	for (int i = 0; i < 4; ++i) {
+		stream.read (&b[i], 1);
+	}
+	return ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
+}
+
+
+static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &stream) {
+	int32_t len = deserializeInt(stream);
+    if (len > 0) {
+		// resize the array to the right length
+		b.resize(len);
+		/*
+		// read into the array in 64k chunks 
+		const int bufSize = 65536;
+		int offset = 0;
+		while (len > 0) {
+			const int chunkLength = len > bufSize ? bufSize : len;
+			stream.read(&(b[offset]), chunkLength);
+			offset += chunkLength;
+			len -= chunkLength;
+		}*/
+	  	stream.read(&(b[0]), len);
+	} else {
+		b.clear();
+	} 
 }
 
 class ImgReader: public HadoopPipes::RecordReader {
