@@ -18,6 +18,8 @@
 #include "histogram.h"
 #include "vldsift.hpp"
 
+static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &stream);
+
 namespace HadoopUtils {
 	/** 
 	* A class to write a stream to a string.
@@ -68,9 +70,23 @@ class ImgProcMap: public HadoopPipes::Mapper {
 		}
 
 		void map(HadoopPipes::MapContext& context) {
-			std::string k = context.getInputKey ();
+			/* get the base name of the file as key for the <K,V> pair */
+			std::string k = getBaseFilename (context.getInputKey ());
+
+			/* value is a serialized BytesArray so needs deserialization */
 			std::string v = context.getInputValue ();
-			std::vector<char> img (v.begin (), v.end ());
+			//HadoopUtils::StringInStream stream (v);
+			//std::vector<char> img;
+			//deserializeBytes (img, stream);
+			std::vector<char> img(v.begin(), v.end());
+
+			/* debug info for deserialization problems:
+			std::cout << "img size: " << img.size () << " value length: " << v.length () << std::endl;
+			for (int i = 0 ; i < 5; ++i) {
+				std::cout << (int)img[i] << " ";
+			}
+			std::cout << std::endl;
+			*/
 
 			switch (algo) {
 				case SIFT:
@@ -201,6 +217,20 @@ class ImgProcMap: public HadoopPipes::Mapper {
 		buf = (value & 0x7F);
 		out.write(&buf, 1);
 	}
+
+
+	std::string getBaseFilename (const std::string& fname) const {
+		/* remove path */
+		char * b = basename (const_cast<char*> (fname.c_str ()));
+		std::string baseName (const_cast<const char*> (b));
+
+		/* remove extension */
+		size_t extPos = baseName.find_last_of ('.');
+		if (extPos >= 0)
+			return baseName.substr (0, extPos);
+		else
+			return baseName;
+	}
 };
 
 
@@ -221,7 +251,10 @@ static int32_t myDeserializeInt (HadoopUtils::InStream &stream) {
 	for (int i = 0; i < 4; ++i) {
 		stream.read (&b[i], 1);
 	}
-	return ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
+	int32_t ret = (((int32_t)(b[0]) << 24) | ((int32_t)(b[1]) << 16) | ((int32_t)(b[2]) << 8) | (int32_t)(b[3]));
+
+	std::cerr << "read integer: " << ret << std::endl;
+	return ret;
 }
 
 /* let's deserialize aa TextArrayWritable */
@@ -348,6 +381,6 @@ int main (int argc, char **argv) {
 	if (argc == 2 && strcmp(argv[1], "test") == 0)
 		ImgProcMap::test();
 	else
-		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce, void, void, ImgReader>());
+		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce>());
 }
 
