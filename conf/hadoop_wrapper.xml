@@ -69,7 +69,17 @@
 	-->
 	<!-- enable compressio -->
 	<property>
+		<name>mapred.output.compress</name>
+		<value>true</value>
+	</property>
+
+	<property>
 		<name>mapred.output.compression.type</name>
 		<value>BLOCK</value>
+	</property>
+
+	<property>
+		<name>multimodal.vectornaming.laxprecision</name>
+		<value>true</value>
 	</property>
 </configuration>
