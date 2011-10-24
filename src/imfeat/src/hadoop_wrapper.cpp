@@ -116,7 +116,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 		}
 	public:
 		static void test() {
-			std::vector<float> v = std::vector<float>();
+			std::vector<double> v = std::vector<double>();
 			v.push_back(1.0);
 			v.push_back(-1.0);
 			HadoopUtils::StringOutStream buf;
@@ -131,69 +131,66 @@ class ImgProcMap: public HadoopPipes::Mapper {
   	static const int8_t FLAG_DENSE = 0x01;
         static const int8_t FLAG_SEQUENTIAL = 0x02;
         static const int8_t FLAG_NAMED = 0x04;
-        static const int8_t FLAG_LAX_PRECISION = 0x08; // set: double, unset: float
+        static const int8_t FLAG_LAX_PRECISION = 0x08; // unset: double, set: float
 	static const int NUM_FLAGS = 4;
 
 	/**
-	 * Serialize into bytes readable as a VectorWritable.
+	 * Serialize into bytes readable as a VectorWritable. Yields (un)named DenseVector.
 	 *
 	 * @see org.apache.mahout.math.VectorWritable.writeVector(DataOutput, Vector, boolean)
 	 */
-	static void serializeFloatVector(std::vector<float> a, HadoopUtils::OutStream& stream)
-	{
-		int8_t flags = FLAG_DENSE | FLAG_SEQUENTIAL | FLAG_LAX_PRECISION;
-		stream.write(&flags, 1);
-		writeUnsignedVarInt(a.size(), stream);
-		uint32_t buf;
-		for ( std::vector<float>::const_iterator it = a.begin(); it != a.end(); ++it) {
-			memcpy(&buf, &(*it), 4);
-			buf = htonl(buf);
-			stream.write(&buf, 4);
-		}
-
-		return;
-	}
-
-	/**
-	 * Serialize into bytes readable as a VectorWritable.
-	 *
-	 * @see org.apache.mahout.math.VectorWritable.writeVector(DataOutput, Vector, boolean)
-	 */
-	static void serializeFloatVector(const std::vector<double> a, HadoopUtils::OutStream& const stream, const char* const name = NULL, int strlen = -1)
+	template<class T> static void serializeFloatVector(const std::vector<T> a, HadoopUtils::OutStream& stream, const char* const name = NULL, int namelen = -1)
 	{
 		uint8_t flags = FLAG_DENSE | FLAG_SEQUENTIAL | FLAG_LAX_PRECISION;
 		if (name != NULL)
 			flags |= FLAG_NAMED;
 		stream.write(&flags, 1);
 		writeUnsignedVarInt(a.size(), stream);
-		uint32_t buf;
-		float f;
-		for ( std::vector<double>::const_iterator it = a.begin(); it != a.end(); ++it) {
-			f = (float) (*it);
-			memcpy(&buf, &f, 4);
-			buf = htonl(buf);
-			stream.write(&buf, 4);
+		for (typename std::vector<T>::const_iterator it = a.begin(); it != a.end(); ++it) {
+			float f = (float) (*it);
+			serializeFloat(f, stream);
 		}
 		if (name != NULL)
-		{
-			if (strlen == -1)
-				strlen = strlen(name);
-			if (strlen > 65535)
-				throw std::overflow_error("Name length overflow");
-			// look for character codes over 127 (0x7F)
-			for (int i = 0; i < strlen; i++)
-			{
-				if (name[i] & 0x80)
-					throw std::overflow_error("Name character code overflow (non-ASCII-7 not implemented yet)");
-				if (name[i] == '\0')
-					throw std::underflow_error("Name character code underflow (zero '\\0' not supported yet)");
-			}
-			uint16_t tmp = strlen;
-			lens = htons(tmp);
-			stream.write(&tmp, 2);
-			stream.write(str, len);
-		}
+			serializeUTF(name, stream, namelen);
 		return;
+	}
+
+	static void serializeFloat(float f, HadoopUtils::OutStream& stream) {
+		uint32_t buf; 
+		memcpy(&buf, &f, 4);
+		buf = htonl(buf);
+		stream.write(&buf, 4);
+	}
+
+	static void serializeShort(int16_t n, HadoopUtils::OutStream& stream) {
+		n = htons(n);
+		stream.write(&n, 2);
+	}
+
+	/**
+	 * Same as java.io.DataOutput#writeUTF().
+	 *
+	 * See: http://download.oracle.com/javase/6/docs/api/java/io/DataInput.html#modified-utf-8
+	 */
+	static void serializeUTF(const char* name, HadoopUtils::OutStream& stream, int namelen = -1) {
+		if (namelen == -1)
+			namelen = strlen(name);
+		if (namelen > 65535)
+			throw std::overflow_error("Name length overflow");
+		// look for character codes over 127 (0x7F)
+		for (int i = 0; i < namelen; i++)
+		{
+			if (name[i] & 0x80)
+				throw std::overflow_error("Name character code overflow (non-ASCII-7 not implemented yet)");
+			if (name[i] == '\0')
+				throw std::underflow_error("Name character code underflow (zero '\\0' not supported yet)");
+		}
+		// write length
+		uint16_t tmp = namelen;
+		tmp = htons(tmp);
+		stream.write(&tmp, 2);
+		// write caharcters
+		stream.write(name, namelen);
 	}
 
 	static void writeUnsignedVarInt(int value, HadoopUtils::OutStream& out) {
@@ -352,7 +349,7 @@ class ImgWriter: public HadoopPipes::RecordWriter {
 };	
 
 int main (int argc, char **argv) {
-	if (argc == 1 && strcmp(argv[0], "test") == 0)
+	if (argc == 2 && strcmp(argv[1], "test") == 0)
 		ImgProcMap::test();
 	else
 		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce, void, void, ImgReader>());
