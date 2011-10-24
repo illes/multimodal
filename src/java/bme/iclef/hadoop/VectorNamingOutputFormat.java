@@ -24,6 +24,7 @@ public class VectorNamingOutputFormat extends SequenceFileOutputFormat<Text, Vec
             FileSystem ignored, JobConf job, String name, Progressable progress)
             throws IOException {
         
+	System.err.println("COMPRESSION: " +super.getOutputCompressionType(job));
         final RecordWriter<Text, VectorWritable> out = super.getRecordWriter(ignored, job, name, progress);
         
         return new RecordWriter<Text, VectorWritable>() {
