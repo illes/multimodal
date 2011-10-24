@@ -186,9 +186,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 				throw std::underflow_error("Name character code underflow (zero '\\0' not supported yet)");
 		}
 		// write length
-		uint16_t tmp = namelen;
-		tmp = htons(tmp);
-		stream.write(&tmp, 2);
+		serializeShort(namelen, stream);
 		// write caharcters
 		stream.write(name, namelen);
 	}
@@ -217,12 +215,21 @@ class ImgProcReduce: public HadoopPipes::Reducer {
 		}
 };
 
+/* For some reason deserializeInt does not work, so going with our own implementation */
+static int32_t myDeserializeInt (HadoopUtils::InStream &stream) {
+	char b[4];
+	for (int i = 0; i < 4; ++i) {
+		stream.read (&b[i], 1);
+	}
+	return ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
+}
+
 /* let's deserialize aa TextArrayWritable */
 static void deserializeTextArrayWritable (const std::string& data, std::vector<std::string>& tv) {
 	HadoopUtils::StringInStream stream (data);
 	/* For some reason deserializeInt does not work, so going with our own implementation */
 //	int32_t size = HadoopUtils::deserializeInt (stream);
-	int32_t size = deserializeInt(stream);
+	int32_t size = myDeserializeInt(stream);
 	int i = 0;
 	while (i++ < size) {
 		std::string fname;
@@ -231,20 +238,9 @@ static void deserializeTextArrayWritable (const std::string& data, std::vector<s
 	}
 }
 
-static int32_t deserializeInt (HadoopUtils::InStream &stream) {
-	/* For some reason deserializeInt does not work, so going with our own implementation */
-//	int32_t size = HadoopUtils::deserializeInt (stream);
-	char b[4];
-	for (int i = 0; i < 4; ++i) {
-		stream.read (&b[i], 1);
-	}
-	return ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
-}
-
-
 static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &stream) {
-	int32_t len = deserializeInt(stream);
-    if (len > 0) {
+	int32_t len = myDeserializeInt(stream);
+    	if (len > 0) {
 		// resize the array to the right length
 		b.resize(len);
 		/*
