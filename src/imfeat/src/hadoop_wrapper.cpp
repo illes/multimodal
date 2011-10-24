@@ -14,7 +14,6 @@
 #include "hadoop/StringUtils.hh"
 #include "hadoop/SerialUtils.hh"
 
-#include "HDFSFile.h"
 #include "histogram.h"
 #include "vldsift.hpp"
 
@@ -291,91 +290,6 @@ static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &strea
 		b.clear();
 	} 
 }
-
-class ImgReader: public HadoopPipes::RecordReader {
-	private:
-		std::vector<std::string> fList;
-		std::vector<char> buf;
-		std::vector<std::string>::const_iterator it;
-	public:
-		ImgReader (HadoopPipes::MapContext& context) {
-			std::string txtArray = context.getInputSplit();
-			deserializeTextArrayWritable (txtArray, fList);
-			it = fList.begin ();
-		}
-
-		virtual ~ImgReader () {
-			buf.clear ();
-
-		}
-
-		virtual bool next (std::string& key, std::string& value) {
-			/* currently transferring the whole image..
-			 * TODO: support for splitting images with ROI
-			 */
-			if (it != fList.end ()) {
-				std::string fname = *it;
-
-				/* open file from HDFS */
-				HDFSFile f (fname);
-				if (!f.openRead () ) {
-					std::cerr << "could not open file: " << key << std::endl;
-				}
-				/* read it into the buffer */
-				f.read (buf);
-
-				/* pass it as value */
-				if (value.capacity () < buf.size ()) 
-					value.resize (buf.size ());
-				std::string v (buf.begin (), buf.end ());
-				value = v;
-
-				/* set key as the base filename without the path and extension */
-				key = getBaseFilename (fname); 
-
-				/* clear the buffer */
-				buf.clear ();
-
-				/* get next one */
-				++it;
-
-				return true;
-			}
-
-			return false;
-		}
-
-		virtual float getProgress () {
-			return 1.0f;
-		}
-	private:
-
-		std::string getBaseFilename (const std::string& fname) const {
-			/* remove path */
-			char * b = basename (const_cast<char*> (fname.c_str ()));
-			std::string baseName (const_cast<const char*> (b));
-
-			/* remove extension */
-			size_t extPos = baseName.find_last_of ('.');
-			if (extPos >= 0)
-				return baseName.substr (0, extPos);
-			else
-				return baseName;
-		}
-};
-
-class ImgWriter: public HadoopPipes::RecordWriter {
-	public:
-		ImgWriter (HadoopPipes::ReduceContext& context) {
-		}
-
-		virtual ~ImgWriter () {
-		}
-
-		virtual void emit(const std::string& key, const std::string& value) {
-			std::cout << "been called with: " << key << std::endl;
-		}
-};	
 
 int main (int argc, char **argv) {
 	if (argc == 2 && strcmp(argv[1], "test") == 0)
