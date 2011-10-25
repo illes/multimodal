@@ -41,6 +41,16 @@
 		<value>-showversion -server -XX:+UseParallelGC -XX:+UseCompressedOops -Djava.net.preferIPv4Stack=true</value>
 	</property>
 
+	<!-- disable reducers 
+		 * also disables partitioning and sorting of mapper output
+		 * mappers write directly to disk
+	 -->
+	<!--
+	<property>
+		<name>mapred.reduce.tasks</name>
+		<value>0</value>
+	</property>
+	-->
 
 	<!-- 
 	     user options 
