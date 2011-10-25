@@ -38,7 +38,7 @@
 	<property>
 		<!-- Sun Java VM tuning -->
 		<name>mapred.child.java.opts</name>
-		<value>-showversion -server -XX:+UseParallelGC -XX:+UseCompressedOops</value>
+		<value>-showversion -server -XX:+UseParallelGC -XX:+UseCompressedOops -Djava.net.preferIPv4Stack=true</value>
 	</property>
 
 
