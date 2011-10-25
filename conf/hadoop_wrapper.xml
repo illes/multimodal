@@ -35,6 +35,11 @@
 		<name>mapred.mapoutput.value.class</name>
 		<value>org.apache.mahout.math.VectorWritable</value>
 	</property>
+	<property>
+		<!-- Sun Java VM tuning -->
+		<name>mapred.child.java.opts</name>
+		<value>-showversion -server -XX:+UseParallelGC -XX:+UseCompressedOops</value>
+	</property>
 
 
 	<!-- 
