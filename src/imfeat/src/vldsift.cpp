@@ -227,6 +227,9 @@ int main(int argc, char** argv ) {
   }
   vl_dsift_delete(df);
 
+	free (fdata);
+	free (data);
+	
   return 0;
 }
 
