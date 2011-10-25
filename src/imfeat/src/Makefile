@@ -24,8 +24,8 @@ JVM_HOME=/usr/lib/jvm/java-6-sun-1.6.0.26
 
 CC=g++
 
-HADOOP_CFLAGS=-I$(HADOOP_DIST)/include -I$(HADOOP_HOME)/src/c++/libhdfs
-HADOOP_LDFLAGS=-L$(HADOOP_DIST)/lib -lhadooppipes -lhadooputils -lpthread -lnsl -lcrypto /home/hadoop/hadoop-0.21.0/c++/Linux-amd64-64/lib/libhdfs.a
+HADOOP_CFLAGS=-I$(HADOOP_DIST)/include
+HADOOP_LDFLAGS=-L$(HADOOP_DIST)/lib -lhadooppipes -lhadooputils -lpthread -lnsl -lcrypto
 
 JVM_CFLAGS=-I$(JVM_HOME)/include -I$(JVM_HOME)/include/linux
 JVM_LDFLAGS=-L$(JVM_HOME)/jre/lib/amd64/server -ljvm
@@ -67,10 +67,7 @@ houghlines: houghlines.o
 hadoop_wrapper.o: hadoop_wrapper.cpp
 	$(CC) $(JVM_CFLAGS) $(HADOOP_CFLAGS) $(CV_CFLAGS) $(VL_CFLAGS) -c $<
 
-HDFSFile.o: HDFSFile.cpp
-	$(CC) $(HADOOP_CFLAGS) $(JVM_CFLAGS) -c $<
-
-hadoop_wrapper: hadoop_wrapper.o HDFSFile.o histogram.o
+hadoop_wrapper: hadoop_wrapper.o histogram.o
 	$(CC) $^ -o $@ $(CV_LDFLAGS) $(HADOOP_LDFLAGS) $(JVM_LDFLAGS) $(VL_LDFLAGS)
 
 .cpp.o:

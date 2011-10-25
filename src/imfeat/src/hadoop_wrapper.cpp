@@ -14,9 +14,10 @@
 #include "hadoop/StringUtils.hh"
 #include "hadoop/SerialUtils.hh"
 
-#include "HDFSFile.h"
 #include "histogram.h"
 #include "vldsift.hpp"
+
+static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &stream);
 
 namespace HadoopUtils {
 	/** 
@@ -68,9 +69,23 @@ class ImgProcMap: public HadoopPipes::Mapper {
 		}
 
 		void map(HadoopPipes::MapContext& context) {
-			std::string k = context.getInputKey ();
+			/* get the base name of the file as key for the <K,V> pair */
+			std::string k = getBaseFilename (context.getInputKey ());
+
+			/* value is a serialized BytesArray so needs deserialization */
 			std::string v = context.getInputValue ();
-			std::vector<char> img (v.begin (), v.end ());
+			//HadoopUtils::StringInStream stream (v);
+			//std::vector<char> img;
+			//deserializeBytes (img, stream);
+			std::vector<char> img(v.begin(), v.end());
+
+			/* debug info for deserialization problems:
+			std::cout << "img size: " << img.size () << " value length: " << v.length () << std::endl;
+			for (int i = 0 ; i < 5; ++i) {
+				std::cout << (int)img[i] << " ";
+			}
+			std::cout << std::endl;
+			*/
 
 			switch (algo) {
 				case SIFT:
@@ -186,9 +201,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 				throw std::underflow_error("Name character code underflow (zero '\\0' not supported yet)");
 		}
 		// write length
-		uint16_t tmp = namelen;
-		tmp = htons(tmp);
-		stream.write(&tmp, 2);
+		serializeShort(namelen, stream);
 		// write caharcters
 		stream.write(name, namelen);
 	}
@@ -202,6 +215,20 @@ class ImgProcMap: public HadoopPipes::Mapper {
 		}
 		buf = (value & 0x7F);
 		out.write(&buf, 1);
+	}
+
+
+	std::string getBaseFilename (const std::string& fname) const {
+		/* remove path */
+		char * b = basename (const_cast<char*> (fname.c_str ()));
+		std::string baseName (const_cast<const char*> (b));
+
+		/* remove extension */
+		size_t extPos = baseName.find_last_of ('.');
+		if (extPos >= 0)
+			return baseName.substr (0, extPos);
+		else
+			return baseName;
 	}
 };
 
@@ -217,12 +244,24 @@ class ImgProcReduce: public HadoopPipes::Reducer {
 		}
 };
 
+/* For some reason deserializeInt does not work, so going with our own implementation */
+static int32_t myDeserializeInt (HadoopUtils::InStream &stream) {
+	char b[4];
+	for (int i = 0; i < 4; ++i) {
+		stream.read (&b[i], 1);
+	}
+	int32_t ret = (((int32_t)(b[0]) << 24) | ((int32_t)(b[1]) << 16) | ((int32_t)(b[2]) << 8) | (int32_t)(b[3]));
+
+	std::cerr << "read integer: " << ret << std::endl;
+	return ret;
+}
+
 /* let's deserialize aa TextArrayWritable */
 static void deserializeTextArrayWritable (const std::string& data, std::vector<std::string>& tv) {
 	HadoopUtils::StringInStream stream (data);
 	/* For some reason deserializeInt does not work, so going with our own implementation */
 //	int32_t size = HadoopUtils::deserializeInt (stream);
-	int32_t size = deserializeInt(stream);
+	int32_t size = myDeserializeInt(stream);
 	int i = 0;
 	while (i++ < size) {
 		std::string fname;
@@ -231,20 +270,9 @@ static void deserializeTextArrayWritable (const std::string& data, std::vector<s
 	}
 }
 
-static int32_t deserializeInt (HadoopUtils::InStream &stream) {
-	/* For some reason deserializeInt does not work, so going with our own implementation */
-//	int32_t size = HadoopUtils::deserializeInt (stream);
-	char b[4];
-	for (int i = 0; i < 4; ++i) {
-		stream.read (&b[i], 1);
-	}
-	return ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
-}
-
-
 static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &stream) {
-	int32_t len = deserializeInt(stream);
-    if (len > 0) {
+	int32_t len = myDeserializeInt(stream);
+    	if (len > 0) {
 		// resize the array to the right length
 		b.resize(len);
 		/*
@@ -263,95 +291,10 @@ static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &strea
 	} 
 }
 
-class ImgReader: public HadoopPipes::RecordReader {
-	private:
-		std::vector<std::string> fList;
-		std::vector<char> buf;
-		std::vector<std::string>::const_iterator it;
-	public:
-		ImgReader (HadoopPipes::MapContext& context) {
-			std::string txtArray = context.getInputSplit();
-			deserializeTextArrayWritable (txtArray, fList);
-			it = fList.begin ();
-		}
-
-		virtual ~ImgReader () {
-			buf.clear ();
-
-		}
-
-		virtual bool next (std::string& key, std::string& value) {
-			/* currently transferring the whole image..
-			 * TODO: support for splitting images with ROI
-			 */
-			if (it != fList.end ()) {
-				std::string fname = *it;
-
-				/* open file from HDFS */
-				HDFSFile f (fname);
-				if (!f.openRead () ) {
-					std::cerr << "could not open file: " << key << std::endl;
-				}
-				/* read it into the buffer */
-				f.read (buf);
-
-				/* pass it as value */
-				if (value.capacity () < buf.size ()) 
-					value.resize (buf.size ());
-				std::string v (buf.begin (), buf.end ());
-				value = v;
-
-				/* set key as the base filename without the path and extension */
-				key = getBaseFilename (fname); 
-
-				/* clear the buffer */
-				buf.clear ();
-
-				/* get next one */
-				++it;
-
-				return true;
-			}
-
-			return false;
-		}
-
-		virtual float getProgress () {
-			return 1.0f;
-		}
-	private:
-
-		std::string getBaseFilename (const std::string& fname) const {
-			/* remove path */
-			char * b = basename (const_cast<char*> (fname.c_str ()));
-			std::string baseName (const_cast<const char*> (b));
-
-			/* remove extension */
-			size_t extPos = baseName.find_last_of ('.');
-			if (extPos >= 0)
-				return baseName.substr (0, extPos);
-			else
-				return baseName;
-		}
-};
-
-class ImgWriter: public HadoopPipes::RecordWriter {
-	public:
-		ImgWriter (HadoopPipes::ReduceContext& context) {
-		}
-
-		virtual ~ImgWriter () {
-		}
-
-		virtual void emit(const std::string& key, const std::string& value) {
-			std::cout << "been called with: " << key << std::endl;
-		}
-};	
-
 int main (int argc, char **argv) {
 	if (argc == 2 && strcmp(argv[1], "test") == 0)
 		ImgProcMap::test();
 	else
-		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce, void, void, ImgReader>());
+		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce>());
 }
 

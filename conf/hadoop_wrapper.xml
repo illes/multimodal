@@ -11,7 +11,7 @@
 	</property>
 	<property>
 		<name>hadoop.pipes.java.recordreader</name>
-		<value>false</value>
+		<value>true</value>
 	</property>
 	<property>
 		<name>hadoop.pipes.java.recordwriter</name>
@@ -35,7 +35,22 @@
 		<name>mapred.mapoutput.value.class</name>
 		<value>org.apache.mahout.math.VectorWritable</value>
 	</property>
+	<property>
+		<!-- Sun Java VM tuning -->
+		<name>mapred.child.java.opts</name>
+		<value>-showversion -server -XX:+UseParallelGC -XX:+UseCompressedOops -Djava.net.preferIPv4Stack=true</value>
+	</property>
 
+	<!-- disable reducers 
+		 * also disables partitioning and sorting of mapper output
+		 * mappers write directly to disk
+	 -->
+	<!--
+	<property>
+		<name>mapred.reduce.tasks</name>
+		<value>0</value>
+	</property>
+	-->
 
 	<!-- 
 	     user options 
@@ -46,7 +61,7 @@
 	</property>
 	<property>
 		<name>multimodal.img.algo</name>
-		<value>1</value>
+		<value>0</value>
 	</property>
 
 	<property>
@@ -67,4 +82,19 @@
 		<value>/home/hadoop/multimodal/dist/iclef2011.jar</value>
 	</property>
 	-->
+	<!-- enable compressio -->
+	<property>
+		<name>mapred.output.compress</name>
+		<value>true</value>
+	</property>
+
+	<property>
+		<name>mapred.output.compression.type</name>
+		<value>BLOCK</value>
+	</property>
+
+	<property>
+		<name>multimodal.vectornaming.laxprecision</name>
+		<value>true</value>
+	</property>
 </configuration>
