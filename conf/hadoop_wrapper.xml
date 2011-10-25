@@ -56,10 +56,16 @@
 	     user options 
 	-->
 	<property>
+		<!-- FIXME: DEPRECATED -->
 		<name>mapreduce.input.imageinputformat.filespermap</name>
 		<value>10</value>
 	</property>
 	<property>
+		<!--
+			 0:
+			 1:
+			 2:
+		 -->
 		<name>multimodal.img.algo</name>
 		<value>0</value>
 	</property>
@@ -82,18 +88,25 @@
 		<value>/home/hadoop/multimodal/dist/iclef2011.jar</value>
 	</property>
 	-->
-	<!-- enable compressio -->
+	<!-- enable compression -->
 	<property>
+		<!-- job output compression -->
 		<name>mapred.output.compress</name>
+		<value>true</value>
+	</property>
+	<property>
+		<!-- global output compression type -->
+		<name>mapred.output.compression.type</name>
+		<value>BLOCK</value>
+	</property>
+	<property>
+		<!-- map output compression -->
+		<name>mapred.compress.map.output</name>
 		<value>true</value>
 	</property>
 
 	<property>
-		<name>mapred.output.compression.type</name>
-		<value>BLOCK</value>
-	</property>
-
-	<property>
+		<!-- whether to store floats instead of doubles in vectors -->
 		<name>multimodal.vectornaming.laxprecision</name>
 		<value>true</value>
 	</property>
