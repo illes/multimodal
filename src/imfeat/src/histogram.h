@@ -16,8 +16,8 @@ class Histogram : public FeatureExtractor {
 	public:
 		Histogram (int hbins = 10, int sbins = 10, int vbins = 1);
 		
-		virtual bool getFeatures (const char* fname, std::vector<std::vector<double> >& k) const;
-		virtual bool getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& k) const;
+		virtual bool getFeatures (const char* fname, std::vector<std::vector<double> >& k);
+		virtual bool getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& k);
 		
 		void convertToCSV (const std::vector<double>& hv, std::string& csv) const;
 

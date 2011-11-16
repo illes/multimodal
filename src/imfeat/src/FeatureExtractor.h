@@ -4,8 +4,6 @@
 #include <cv.h>
 #include <vector>
 
-#include "daisy/daisy.h"
-
 using namespace cv;
 
 class FeatureExtractor {
@@ -17,8 +15,8 @@ class FeatureExtractor {
 		FeatureExtractor ();
 		virtual ~FeatureExtractor ();
 		
-		virtual bool getFeatures (const char* fname, std::vector<std::vector<double> >& k) const = 0;
-		virtual bool getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& k) const = 0;
+		virtual bool getFeatures (const char* fname, std::vector<std::vector<double> >& k) = 0;
+		virtual bool getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& k) = 0;
 		
 		void setKeypointDetector (Ptr<FeatureDetector> KPDetector);
 
@@ -31,29 +29,5 @@ class FeatureExtractor {
 		Ptr<FeatureDetector> fd;
 };
 
-
-class Daisy : public FeatureExtractor {
-	private: 
-		Daisy (Daisy&);
-		Daisy& operator=(Daisy&);
-
-	public:
-		Daisy (int rad = 15, int radq = 3, int thq = 8, int histq = 8);
-		virtual ~Daisy ();
-		
-		virtual bool getFeatures (const char* fname, std::vector<std::vector<double> >& k);
-		virtual bool getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& k);
-
-	private:
-		bool getDaisy (const Mat& img, std::vector<std::vector<double> >& k, const vector<KeyPoint>& kp);
-		
-	private:
-		int _rad;
-    int _radq;
-    int _thq;
-    int _histq;
-
-		daisy dy;
-};
 
 #endif

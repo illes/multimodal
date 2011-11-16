@@ -54,19 +54,19 @@ namespace HadoopUtils {
 
 class ImgProcMap: public HadoopPipes::Mapper {
 	public:
-		enum ImgAlgo {
+		typedef enum ImgAlgo {
 			SIFT = 0,
 			HISTOGRAM,
 			DAISY
-		};
+		} ImgAlgo;
 		
-		enum KeyPointDetector {
+		typedef enum KeyPointDetector {
 			MSER = 0,
-			SIFT,
+//			SIFT,
 			SURF,
 			ORB,
 			YAPE
-		};
+		} KeyPointDetector;
 		
 	public:
 		ImgProcMap(HadoopPipes::TaskContext& context) {
@@ -78,19 +78,19 @@ class ImgProcMap: public HadoopPipes::Mapper {
 
 			algo = context.getJobConf ()->getInt ("multimodal.img.algo");
 			
-			ft = NULL;
+			fe = NULL;
 			
 			switch (algo) {
 				case SIFT:
 				{
-					ft = new VLDSIFT ();
+					fe = new VLDSIFT ();
 					
 					break;
 				}
 				
 				case DAISY:
 				{
-					ft = new Daisy ();
+					fe = new Daisy ();
 					break;
 				}
 				
@@ -104,7 +104,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 					if (conf->hasKey ("multimodal.img.hist.vbin"))
 						vbin = context.getJobConf ()->getInt ("multimodal.img.hist.vbin");
 					
-					ft = new Histogram (hbin, sbin, vbin);
+					fe = new Histogram (hbin, sbin, vbin);
 					
 					break;
 				}
@@ -114,15 +114,15 @@ class ImgProcMap: public HadoopPipes::Mapper {
 					std::cerr << "undefined algorithm" << std::endl;
 			}
 			
-			HADOOP_ASSERT (ft != NULL, "Problem occured while constr img algo obj.");	
+			HADOOP_ASSERT (fe != NULL, "Problem occured while constr img algo obj.");	
 			
 			if (conf->hasKey ("multimodal.img.keypoint"))
 				setKeypointDetector (context.getJobConf ()->getInt ("multimodal.img.keypoint"));
 		}
 
 		~ImgProcMap () {
-			if (ft)
-				delete ft;
+			if (fe)
+				delete fe;
 		}
 		
 		void map(HadoopPipes::MapContext& context) {
@@ -146,7 +146,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 
 			/* generate features for the image */
 			std::vector<std::vector<double> > descr;
-			ft->getFeatures (img, descr);
+			fe->getFeatures (img, descr);
 			std::vector<std::vector<double> >::const_iterator it 
 				= descr.begin (), it_end = descr.end ();
 			for (int i = 0; it != it_end; it++, i++) {
@@ -275,7 +275,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			case MSER:
 				kpDet = FeatureDetector::create ("MSER");
 				break;
-			case SIFT:
+			//case SIFT:
 				kpDet = FeatureDetector::create ("SIFT");
 				break;
 			case SURF:
@@ -287,12 +287,10 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			case YAPE:
 				break;
 			default:
-				return false;
+				return;
 		}
 		
 		fe->setKeypointDetector (kpDet);
-		
-		return true;
 	}
 };
 

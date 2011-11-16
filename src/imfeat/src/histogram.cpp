@@ -8,7 +8,7 @@ Histogram::Histogram (int hbins, int sbins, int vbins)
 
 }
 
-bool Histogram::getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& hv) const {
+bool Histogram::getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& hv) {
 	bool ret = false;
 	
 	Ptr<Mat> src = readImgFromVector (img);
@@ -23,7 +23,7 @@ bool Histogram::getFeatures (const std::vector<char>& img, std::vector<std::vect
 	return true;
 }
 
-bool Histogram::getFeatures (const char* fname, std::vector<std::vector<double> >& hv) const {
+bool Histogram::getFeatures (const char* fname, std::vector<std::vector<double> >& hv) {
 	bool ret = false;
 	
 	Ptr<Mat> src = readImgFromFile (fname);
@@ -34,14 +34,6 @@ bool Histogram::getFeatures (const char* fname, std::vector<std::vector<double> 
 	
 	calcHSV (*src, hv);
 	src.release ();
-	
-	return true;
-}
-
-bool Histogram::getFeatures (const Mat& img, std::vector<std::vector<double> >& k, vector<KeyPoint>& kp) const {
-	/* we are not supporting keypoint histogram extraction thus ignoring it*/
-	
-	calcHSV (img, k);
 	
 	return true;
 }

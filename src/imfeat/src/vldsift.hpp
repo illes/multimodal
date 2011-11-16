@@ -74,7 +74,7 @@ class VLDSIFT : public FeatureExtractor {
 	public:
 		VLDSIFT (int step_size = 10) : _stepSize (step_size) {}
 		
-		virtual bool getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& k) const {
+		virtual bool getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& k) {
 			bool ret = false;
 
 			/* load the image in grayscale */
@@ -90,7 +90,7 @@ class VLDSIFT : public FeatureExtractor {
 			return ret;
 		}
 		
-		virtual bool getFeatures (const char* fname, std::vector<std::vector<double> >& k) const {	
+		virtual bool getFeatures (const char* fname, std::vector<std::vector<double> >& k) {
 			bool ret = false;
 			
 			/* load the image in grayscale */
