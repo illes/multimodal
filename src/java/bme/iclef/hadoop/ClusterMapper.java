@@ -30,6 +30,7 @@ import org.apache.mahout.math.RandomAccessSparseVector;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.Vector.Element;
 import org.apache.mahout.utils.vectors.io.VectorWriter;
+import org.apache.mahout.clustering.WeightedPropertyVectorWritable;
 
 import bme.iclef.mahout.ByIndexSparseVectorSorter;
 import bme.iclef.mahout.Sift2Mahout;
@@ -39,7 +40,8 @@ import bme.iclef.utils.Maps;
 public class ClusterMapper {
 
 	final static double NORMALIZATION_POWER = 1.0;
-	final static Pattern vectorName = Pattern.compile("(?i)^.*/([^\\/]*)\\.jp.*sift:?([0-9]+)$");
+	//final static Pattern vectorName = Pattern.compile("(?i)^.*/([^\\/]*)\\.jp.*sift:?([0-9]+)$");
+	final static Pattern vectorName = Pattern.compile("(?i)^(.*):([0-9]+)$");
 	
 
 	public static void main(String[] args) throws IOException,
