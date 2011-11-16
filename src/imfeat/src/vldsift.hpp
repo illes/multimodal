@@ -9,6 +9,8 @@
 
 #include "vl/dsift.h"
 
+#include "FeatureExtractor.h"
+
 #define VLDSIFT_DIM 128
 using namespace cv;
 using namespace std;
@@ -65,33 +67,43 @@ struct Points_vldsift {
 };
 
 
-class VLDSIFT {
+class VLDSIFT : public FeatureExtractor {
 		VLDSIFT (VLDSIFT&);
 		VLDSIFT& operator=(VLDSIFT&);
 		
 	public:
 		VLDSIFT (int step_size = 10) : _stepSize (step_size) {}
 		
-		bool getDSIFT (const std::vector<char>& img, std::vector<std::vector<double> >& k) const {			
+		virtual bool getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& k) const {
+			bool ret = false;
+
 			/* load the image in grayscale */
-			Mat src = imdecode (Mat (img), 0);
-			if (src.data == NULL) {
+			Ptr<Mat> src = readImgFromVector (img, true);
+			if (src == NULL) {
 				/* problem with the decoding */
-				return false;
+				return ret;
 			}
 			
-			return calcDSIFT (src, k);
+			ret = calcDSIFT (*src, k);
+			src.release ();
+			
+			return ret;
 		}
 		
-		bool getDSIFT (const char* fname, std::vector<std::vector<double> >& k) const {			
+		virtual bool getFeatures (const char* fname, std::vector<std::vector<double> >& k) const {	
+			bool ret = false;
+			
 			/* load the image in grayscale */
-			Mat src = imread (fname, 0);
-			if (src.data == NULL) {
+			Ptr<Mat> src = readImgFromFile (fname, true);
+			if (src == NULL) {
 				/* problem with the decoding */
-				return false;
+				return ret;
 			}
 			
-			return calcDSIFT (src, k);
+			ret = calcDSIFT (*src, k);
+			src.release ();
+			
+			return ret;
 		}
 	
 	private:

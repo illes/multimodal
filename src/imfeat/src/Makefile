@@ -43,13 +43,16 @@ EXECUTABLE=vldsift cluster histogram detectsqr skin_detect houghlines keypoints
 
 all: $(SOURCES) $(EXECUTABLE)
 
+FeatureExtractor.o: FeatureExtractor.cpp
+	$(CC) $(CV_CFLAGS) $(DAISY_CFLAGS) -c $<
+
 vldsift: vldsift.o
 	$(CC) $(VL_CFLAGS) $< -o $@ $(VL_LDFLAGS)
 
 histogram.o: histogram.cpp
 	$(CC) $(CV_CFLAGS) -c $<
 
-histogram: histogram_standalone.o histogram.o
+histogram: histogram_standalone.o histogram.o FeatureExtractor.o
 	$(CC) $(CV_CFLAGS) $^ -o $@ $(CV_LDFLAGS)
 
 keypoints: keypoints.cpp

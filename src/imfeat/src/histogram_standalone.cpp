@@ -78,7 +78,7 @@ main (int argc, char** argv) {
 	  printCSVHeader ();
 
   Histogram h (hbins, sbins, vbins);
-  std::vector<double> hv;
+  std::vector<std::vector<double> > hv;
   if (file_list) {
 	  char buf[255];
 	  FILE *fd = fopen (file_list, "r");
@@ -94,11 +94,11 @@ main (int argc, char** argv) {
 			  buf[len] = '\0';
 
 
-		  h.getHSV (buf, hv);
+		  h.getFeatures (buf, hv);
 		  
 		  /* convert to CSV and print */
 		  std::string hCSV;
-		  h.convertToCSV (hv, hCSV);
+		  h.convertToCSV (hv[0], hCSV);
 		  printCSVforFile (buf, hCSV);
 
 		  hv.clear ();
@@ -107,9 +107,9 @@ main (int argc, char** argv) {
 	  fclose (fd);
   } else { 
 	  for (int i = optind; i < argc; ++i) {
-		  h.getHSV (argv[i], hv);
+		  h.getFeatures (argv[i], hv);
 		  std::string hCSV;
-		  h.convertToCSV (hv, hCSV);
+		  h.convertToCSV (hv[0], hCSV);
 		  printCSVforFile (argv[i], hCSV);
 
 		  hv.clear ();

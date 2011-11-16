@@ -16,6 +16,7 @@
 
 #include "histogram.h"
 #include "vldsift.hpp"
+#include "FeatureExtractor.h"
 
 static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &stream);
 
@@ -55,8 +56,18 @@ class ImgProcMap: public HadoopPipes::Mapper {
 	public:
 		enum ImgAlgo {
 			SIFT = 0,
-			HISTOGRAM
+			HISTOGRAM,
+			DAISY
 		};
+		
+		enum KeyPointDetector {
+			MSER = 0,
+			SIFT,
+			SURF,
+			ORB,
+			YAPE
+		};
+		
 	public:
 		ImgProcMap(HadoopPipes::TaskContext& context) {
 			const HadoopPipes::JobConf *conf = context.getJobConf ();
@@ -66,8 +77,54 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			HADOOP_ASSERT (hasAlgo != false, "No image processing algorithm defined in conf file!");
 
 			algo = context.getJobConf ()->getInt ("multimodal.img.algo");
+			
+			ft = NULL;
+			
+			switch (algo) {
+				case SIFT:
+				{
+					ft = new VLDSIFT ();
+					
+					break;
+				}
+				
+				case DAISY:
+				{
+					ft = new Daisy ();
+					break;
+				}
+				
+				case HISTOGRAM:
+				{
+					int hbin = 4, sbin = 4, vbin = 3;
+					if (conf->hasKey ("multimodal.img.hist.hbin"))
+						hbin = context.getJobConf ()->getInt ("multimodal.img.hist.hbin");
+					if (conf->hasKey ("multimodal.img.hist.sbin"))
+						sbin = context.getJobConf ()->getInt ("multimodal.img.hist.sbin");
+					if (conf->hasKey ("multimodal.img.hist.vbin"))
+						vbin = context.getJobConf ()->getInt ("multimodal.img.hist.vbin");
+					
+					ft = new Histogram (hbin, sbin, vbin);
+					
+					break;
+				}
+				
+				default:
+					/* should never ever get here! */
+					std::cerr << "undefined algorithm" << std::endl;
+			}
+			
+			HADOOP_ASSERT (ft != NULL, "Problem occured while constr img algo obj.");	
+			
+			if (conf->hasKey ("multimodal.img.keypoint"))
+				setKeypointDetector (context.getJobConf ()->getInt ("multimodal.img.keypoint"));
 		}
 
+		~ImgProcMap () {
+			if (ft)
+				delete ft;
+		}
+		
 		void map(HadoopPipes::MapContext& context) {
 			/* get the base name of the file as key for the <K,V> pair */
 			std::string k = getBaseFilename (context.getInputKey ());
@@ -87,48 +144,28 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			std::cout << std::endl;
 			*/
 
-			switch (algo) {
-				case SIFT:
-				{
-					/* do sift */
-					VLDSIFT dsift;
-
-					std::vector<std::vector<double> > descr;
-					dsift.getDSIFT (img, descr);
-
-					std::vector<std::vector<double> >::const_iterator it 
-						= descr.begin (), it_end = descr.end ();
-					for (int i = 0; it != it_end; it++, i++) {
-						std::string key = k;
-						char idx[10];
-						snprintf (idx, 9, ":%d",i); 
-						HadoopUtils::StringOutStream buf;
-						serializeFloatVector(*it, buf);
-						key.append (idx);
-						context.emit (key, buf.str ());
-					}
-
-					break;
+			/* generate features for the image */
+			std::vector<std::vector<double> > descr;
+			ft->getFeatures (img, descr);
+			std::vector<std::vector<double> >::const_iterator it 
+				= descr.begin (), it_end = descr.end ();
+			for (int i = 0; it != it_end; it++, i++) {
+				std::string key = k;
+				/* append an index of the key to the filename
+				 * if there are more than one vectors
+				 */
+				if (descr.size () > 1) {
+					char idx[10];
+					snprintf (idx, 9, ":%d",i); 
+					key.append (idx);
 				}
-
-				case HISTOGRAM:
-				{
-					Histogram h (4, 4, 3);
-					std::vector<double> hv;
-					h.getHSV (img, hv);
-
-					// serialize to Java's VectorWritable
-					HadoopUtils::StringOutStream buf;
-					serializeFloatVector(hv, buf);
-					context.emit (k, buf.str());
-
-					break;
-				}
-				default:
-					/* should never ever get here! */
-					std::cerr << "undefined algorithm" << std::endl;
-			}
+				/* serialize the vector and send it to the reducer */
+				HadoopUtils::StringOutStream buf;
+				serializeFloatVector(*it, buf);
+				context.emit (key, buf.str ());
+			}	
 		}
+
 	public:
 		static void test() {
 			std::vector<double> v = std::vector<double>();
@@ -142,6 +179,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 
 	private:
 	int algo; /* image processing algorithm to run */
+	FeatureExtractor *fe;
 	
   	static const int8_t FLAG_DENSE = 0x01;
         static const int8_t FLAG_SEQUENTIAL = 0x02;
@@ -229,6 +267,32 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			return baseName.substr (0, extPos);
 		else
 			return baseName;
+	}
+	
+	void setKeypointDetector (int kpDetector) const {
+		Ptr<FeatureDetector> kpDet = NULL;
+		switch (kpDetector) {
+			case MSER:
+				kpDet = FeatureDetector::create ("MSER");
+				break;
+			case SIFT:
+				kpDet = FeatureDetector::create ("SIFT");
+				break;
+			case SURF:
+				kpDet = FeatureDetector::create ("SURF");
+				break;
+			case ORB:
+				kpDet = FeatureDetector::create ("ORB");
+				break;
+			case YAPE:
+				break;
+			default:
+				return false;
+		}
+		
+		fe->setKeypointDetector (kpDet);
+		
+		return true;
 	}
 };
 

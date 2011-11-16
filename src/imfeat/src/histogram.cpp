@@ -8,29 +8,44 @@ Histogram::Histogram (int hbins, int sbins, int vbins)
 
 }
 
-void Histogram::getHSV (const std::vector<char>& img, std::vector<double>& hv) const {
-	Mat src;
-
-	src = imdecode (Mat (img), 1);
-	if (src.data == NULL) {
+bool Histogram::getFeatures (const std::vector<char>& img, std::vector<std::vector<double> >& hv) const {
+	bool ret = false;
+	
+	Ptr<Mat> src = readImgFromVector (img);
+	if (src == NULL) {
 		/* problem with the decoding */
-		return;
+		return ret;
 	}
 	
-	calcHSV (src, hv);
+	calcHSV (*src, hv);
+	src.release ();
+
+	return true;
 }
 
-void Histogram::getHSV (const char* fname, std::vector<double>& hv) const {
-	Mat src;
-
-	src = imread (fname, 1);
-	if (src.data == NULL) {
+bool Histogram::getFeatures (const char* fname, std::vector<std::vector<double> >& hv) const {
+	bool ret = false;
+	
+	Ptr<Mat> src = readImgFromFile (fname);
+	if (src == NULL) {
 		/* problem with the decoding */
-		return;
+		return ret;
 	}
 	
-	calcHSV (src, hv);
+	calcHSV (*src, hv);
+	src.release ();
+	
+	return true;
 }
+
+bool Histogram::getFeatures (const Mat& img, std::vector<std::vector<double> >& k, vector<KeyPoint>& kp) const {
+	/* we are not supporting keypoint histogram extraction thus ignoring it*/
+	
+	calcHSV (img, k);
+	
+	return true;
+}
+
 
 double Histogram::findMaxVal (const MatND& hist) const {
 	double maxVal = -1;
@@ -44,7 +59,7 @@ double Histogram::findMaxVal (const MatND& hist) const {
 	return maxVal;
 }
 
-void Histogram::calcHSV (const Mat& img, std::vector<double>& hv) const {
+void Histogram::calcHSV (const Mat& img, std::vector<std::vector<double> >& k) const {
 	if (img.data == NULL)
 		return;
 
@@ -77,6 +92,7 @@ void Histogram::calcHSV (const Mat& img, std::vector<double>& hv) const {
 			false);
 	double maxVal = findMaxVal (hist);
 
+	std::vector<double> hv;
 	for (int v = 0; v < _vbins; v++) {
 		for( int h = 0; h < _hbins; h++ ) {      
 			for( int s = 0; s < _sbins; s++ ) {
@@ -85,6 +101,7 @@ void Histogram::calcHSV (const Mat& img, std::vector<double>& hv) const {
 			}
 		}
 	}
+	k.push_back (hv);
 }	
 
 void Histogram::convertToCSV (const std::vector<double>& hv, std::string& s) const {
