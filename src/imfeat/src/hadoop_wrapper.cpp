@@ -14,9 +14,10 @@
 #include "hadoop/StringUtils.hh"
 #include "hadoop/SerialUtils.hh"
 
+#include "FeatureExtractor.h"
 #include "histogram.h"
 #include "vldsift.hpp"
-#include "FeatureExtractor.h"
+#include "Daisy.h"
 
 static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &stream);
 
@@ -54,19 +55,23 @@ namespace HadoopUtils {
 
 class ImgProcMap: public HadoopPipes::Mapper {
 	public:
-		typedef enum ImgAlgo {
-			SIFT = 0,
-			HISTOGRAM,
-			DAISY
-		} ImgAlgo;
-		
-		typedef enum KeyPointDetector {
-			MSER = 0,
-//			SIFT,
-			SURF,
-			ORB,
-			YAPE
-		} KeyPointDetector;
+		struct FeatureExt {
+			enum ImgAlgo {
+				SIFT = 0,
+				HISTOGRAM,
+				DAISY
+			};
+		};
+
+		struct KeyPointDetector {
+			enum KPDetector {
+				MSER = 0,
+				SIFT,
+				SURF,
+				ORB,
+				YAPE
+			};
+		};
 		
 	public:
 		ImgProcMap(HadoopPipes::TaskContext& context) {
@@ -81,20 +86,20 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			fe = NULL;
 			
 			switch (algo) {
-				case SIFT:
+				case FeatureExt::SIFT:
 				{
 					fe = new VLDSIFT ();
 					
 					break;
 				}
 				
-				case DAISY:
+				case FeatureExt::DAISY:
 				{
 					fe = new Daisy ();
 					break;
 				}
 				
-				case HISTOGRAM:
+				case FeatureExt::HISTOGRAM:
 				{
 					int hbin = 4, sbin = 4, vbin = 3;
 					if (conf->hasKey ("multimodal.img.hist.hbin"))
@@ -272,19 +277,19 @@ class ImgProcMap: public HadoopPipes::Mapper {
 	void setKeypointDetector (int kpDetector) const {
 		Ptr<FeatureDetector> kpDet = NULL;
 		switch (kpDetector) {
-			case MSER:
+			case KeyPointDetector::MSER:
 				kpDet = FeatureDetector::create ("MSER");
 				break;
-			//case SIFT:
+			case KeyPointDetector::SIFT:
 				kpDet = FeatureDetector::create ("SIFT");
 				break;
-			case SURF:
+			case KeyPointDetector::SURF:
 				kpDet = FeatureDetector::create ("SURF");
 				break;
-			case ORB:
+			case KeyPointDetector::ORB:
 				kpDet = FeatureDetector::create ("ORB");
 				break;
-			case YAPE:
+			case KeyPointDetector::YAPE:
 				break;
 			default:
 				return;
