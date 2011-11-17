@@ -65,7 +65,8 @@ class ImgProcMap: public HadoopPipes::Mapper {
 
 		struct KeyPointDetector {
 			enum KPDetector {
-				MSER = 0,
+				NONE = 0,
+				MSER,
 				SIFT,
 				SURF,
 				ORB,
@@ -157,11 +158,6 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			if (debug)
 				std::cerr << "processing: " << k;
 			fe->getFeatures (img, descr);
-			if (!descr.size()) {
-				if (debug)
-					std::cerr << " ...could not find any keypoints" << std::endl;
-				return;
-			}
 
 			std::vector<std::vector<double> >::const_iterator it 
 				= descr.begin (), it_end = descr.end ();
@@ -180,8 +176,14 @@ class ImgProcMap: public HadoopPipes::Mapper {
 				serializeFloatVector(*it, buf);
 				context.emit (key, buf.str ());
 			}	
-			if (debug)
-				std::cerr << " ... DONE" << std::endl;
+
+			if (debug) {
+				if (!descr.size ())
+					std::cerr << " ...could not find any keypoints";
+				else
+					std::cerr << " ... DONE";
+				std::cerr << std::endl;
+			}
 		}
 
 	public:
