@@ -152,6 +152,15 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			/* generate features for the image */
 			std::vector<std::vector<double> > descr;
 			fe->getFeatures (img, descr);
+			if (!descr.size()) {
+				std::cout << "could not find any keypoints for: " << k << std::endl;
+				std::vector<double> emptyVector;
+				HadoopUtils::StringOutStream buf;
+				serializeFloatVector(emptyVector, buf);
+				context.emit (k, buf.str ());
+
+			}
+
 			std::vector<std::vector<double> >::const_iterator it 
 				= descr.begin (), it_end = descr.end ();
 			for (int i = 0; it != it_end; it++, i++) {
@@ -179,6 +188,20 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			HadoopUtils::StringOutStream buf;
 	    		serializeFloatVector(v, buf, "hello");
 			std::cout << buf.str();
+		}
+
+		static void testDaisy (const char* file) {
+			Daisy d;
+			Ptr<FeatureDetector> fd = FeatureDetector::create ("MSER");
+			d.setKeypointDetector (fd);
+			std::vector<std::vector<double> > descr;
+			d.getFeatures (file, descr);
+
+			std::cout << "number of features found: " << descr.size () << std::endl;
+			std::cout << "first one (" << descr[0].size() << "):" << std::endl;
+			for (int i=0; i < descr[0].size(); ++i)
+				std::cout << descr[0][i] << " ";
+			std::cout << std::endl;
 		}
 
 
@@ -359,8 +382,12 @@ static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &strea
 }
 
 int main (int argc, char **argv) {
-	if (argc == 2 && strcmp(argv[1], "test") == 0)
-		ImgProcMap::test();
+	if (argc >= 2) {
+	       if (strcmp(argv[1], "test") == 0)
+			ImgProcMap::test();
+	       else if (strcmp(argv[1], "testDaisy") == 0)
+		       ImgProcMap::testDaisy(argv[2]);
+	}
 	else
 		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce>());
 }
