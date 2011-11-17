@@ -74,7 +74,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 		};
 		
 	public:
-		ImgProcMap(HadoopPipes::TaskContext& context) {
+		ImgProcMap(HadoopPipes::TaskContext& context) : debug (false) {
 			const HadoopPipes::JobConf *conf = context.getJobConf ();
 			HADOOP_ASSERT (conf != NULL, "There's no JobConf!");
 
@@ -123,6 +123,9 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			
 			if (conf->hasKey ("multimodal.img.keypoint"))
 				setKeypointDetector (context.getJobConf ()->getInt ("multimodal.img.keypoint"));
+
+			if (conf->hasKey ("multimodal.debug"))
+				debug = context.getJobConf ()->getBoolean ("multimodal.debug"); 
 		}
 
 		~ImgProcMap () {
@@ -151,15 +154,13 @@ class ImgProcMap: public HadoopPipes::Mapper {
 
 			/* generate features for the image */
 			std::vector<std::vector<double> > descr;
-			std::cerr << "processing: " << k;
+			if (debug)
+				std::cerr << "processing: " << k;
 			fe->getFeatures (img, descr);
 			if (!descr.size()) {
-				std::cout << "could not find any keypoints for: " << k << std::endl;
-				std::vector<double> emptyVector;
-				HadoopUtils::StringOutStream buf;
-				serializeFloatVector(emptyVector, buf);
-				context.emit (k, buf.str ());
-
+				if (debug)
+					std::cerr << " ...could not find any keypoints" << std::endl;
+				return;
 			}
 
 			std::vector<std::vector<double> >::const_iterator it 
@@ -179,7 +180,8 @@ class ImgProcMap: public HadoopPipes::Mapper {
 				serializeFloatVector(*it, buf);
 				context.emit (key, buf.str ());
 			}	
-			std::cerr << " ... DONE" << std::endl;
+			if (debug)
+				std::cerr << " ... DONE" << std::endl;
 		}
 
 	public:
@@ -211,6 +213,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 
 	private:
 	int algo; /* image processing algorithm to run */
+	bool debug;
 	FeatureExtractor *fe;
 	
   	static const int8_t FLAG_DENSE = 0x01;

@@ -66,6 +66,13 @@
 		<name>mapreduce.input.imageinputformat.filespermap</name>
 		<value>10</value>
 	</property>
+
+	<property>
+		<name>multimodal.debug</name>
+		<value>true</value>
+	</property>
+
+
 	<property>
 		<!--
 			 0:
@@ -73,7 +80,7 @@
 			 2:
 		 -->
 		<name>multimodal.img.algo</name>
-		<value>0</value>
+		<value>2</value>
 	</property>
 
 	<property>
