@@ -151,6 +151,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 
 			/* generate features for the image */
 			std::vector<std::vector<double> > descr;
+			std::cerr << "processing: " << k;
 			fe->getFeatures (img, descr);
 			if (!descr.size()) {
 				std::cout << "could not find any keypoints for: " << k << std::endl;
@@ -178,6 +179,7 @@ class ImgProcMap: public HadoopPipes::Mapper {
 				serializeFloatVector(*it, buf);
 				context.emit (key, buf.str ());
 			}	
+			std::cerr << " ... DONE" << std::endl;
 		}
 
 	public:
@@ -198,10 +200,12 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			d.getFeatures (file, descr);
 
 			std::cout << "number of features found: " << descr.size () << std::endl;
-			std::cout << "first one (" << descr[0].size() << "):" << std::endl;
-			for (int i=0; i < descr[0].size(); ++i)
-				std::cout << descr[0][i] << " ";
-			std::cout << std::endl;
+			if (descr.size ()) {
+				std::cout << "first one (" << descr[0].size() << "):" << std::endl;
+				for (int i=0; i < descr[0].size(); ++i)
+					std::cout << descr[0][i] << " ";
+				std::cout << std::endl;
+			}
 		}
 
 

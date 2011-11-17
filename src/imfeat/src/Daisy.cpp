@@ -83,8 +83,8 @@ bool Daisy::getDaisy (const Mat& img, std::vector<std::vector<double> >& k, cons
 		 */
 	  vector<KeyPoint>::const_iterator it = kp.begin (), end_it = kp.end ();
 	  float* thor = new float[dy.descriptor_size ()];
-		if (thor == NULL)
-			return false;
+	  if (thor == NULL)
+		return false;
 		
 	  for ( ; it != end_it; ++it) {
 	    KeyPoint kp = *it;
@@ -116,8 +116,8 @@ bool Daisy::getDaisy (const Mat& img, std::vector<std::vector<double> >& k, cons
 			k.push_back (descr);
 	  }		
 		
-		if (kp[0].angle != -1)
-    	delete [] thor;
+	  if (kp.size() && kp[0].angle != -1)
+    		delete [] thor;
 
 	} else {
 		/* no keypoint has been give, store all the descriptors */
