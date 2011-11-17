@@ -2,18 +2,17 @@
 
 #include <highgui.h>
 
+#include "daisy/daisy.h"
+
 Daisy::Daisy (int rad, int radq, int thq, int histq)
 	: _rad (rad),
 	_radq (radq),
 	_thq  (thq),
-  _histq (histq)
+	_histq (histq)
 {
-	dy.verbose (0);
-  dy.set_parameters (_rad, _radq, _thq, _histq);
 }
 
 Daisy::~Daisy () {
-	dy.reset ();
 }
 
 bool Daisy::getFeatures (const char* fname, std::vector<std::vector<double> >& k) {
@@ -63,14 +62,20 @@ bool Daisy::getFeatures (const std::vector<char>& img, std::vector<std::vector<d
 }
 
 bool Daisy::getDaisy (const Mat& img, std::vector<std::vector<double> >& k, const vector<KeyPoint>& kp) {
-	/* reset the daisy obj and set the new image */
-	dy.reset ();
-  dy.set_image (img.data, img.rows, img.cols);
-  dy.initialize_single_descriptor_mode ();
+	/* create daisy extractor */
+	daisy dy;
+
+	/* set daisy parameters */
+	dy.verbose (0);
+	dy.set_parameters (_rad, _radq, _thq, _histq);
+
+	/* set the new image */
+ 	dy.set_image (img.data, img.rows, img.cols);
+  	dy.initialize_single_descriptor_mode ();
 
 	/* calculate the descriptors */
-  dy.compute_descriptors ();
-  dy.normalize_descriptors ();
+  	dy.compute_descriptors ();
+ 	dy.normalize_descriptors ();
 
 	if (!fd.empty ()) {
 		/* if there's a keypoint detector, use it's output and get the descriptors
@@ -130,5 +135,8 @@ bool Daisy::getDaisy (const Mat& img, std::vector<std::vector<double> >& k, cons
 		}
 	}
 	
+	/* reset, i.e. deallocate all memory by daisy */
+	dy.reset ();
+
 	return true;
 }

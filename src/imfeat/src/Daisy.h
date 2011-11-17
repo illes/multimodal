@@ -2,7 +2,6 @@
 #define __DAISY_H__
 
 #include "FeatureExtractor.h"
-#include "daisy/daisy.h"
 
 class Daisy : public FeatureExtractor {
 	private:
@@ -24,8 +23,6 @@ class Daisy : public FeatureExtractor {
 		int _radq;
 		int _thq;
 		int _histq;
-
-		daisy dy;
 };
 
 #endif
