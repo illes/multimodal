@@ -1,3 +1,6 @@
 [submodule "src/imfeat/vlfeat"]
 	path = src/imfeat/vlfeat
 	url = git://github.com/vigsterkr/vlfeat.git 
+[submodule "src/imfeat/daisy"]
+	path = src/imfeat/daisy
+	url = git://github.com/vigsterkr/daisy.git

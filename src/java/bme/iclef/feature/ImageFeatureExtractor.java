@@ -64,6 +64,8 @@ public class ImageFeatureExtractor {
 	    return net.semanticmetadata.lire.imageanalysis.EdgeHistogram.class;
 	else if (extrMode.compareToIgnoreCase("autocor") == 0)
 	    return net.semanticmetadata.lire.imageanalysis.AutoColorCorrelogram.class;
+	else if (extrMode.compareToIgnoreCase("gabor") == 0)
+		return net.semanticmetadata.lire.imageanalysis.Gabor.class;
 	else
 	{
 	    try {
@@ -140,7 +142,7 @@ public class ImageFeatureExtractor {
 	    } catch (Exception e) {
 		e.printStackTrace();
 		System.err
-			.println("\nSupported methods: cced, fcth, tamura, edgehist, autocor");
+			.println("\nSupported methods: cced, fcth, tamura, edgehist, autocor, gabor");
 		System.err.println("\nExample run:");
 		System.err
 			.println("\tjava bme.iclef.feature.ImageFeatureExtractor cced test.jpg");

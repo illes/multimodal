@@ -14,8 +14,10 @@
 #include "hadoop/StringUtils.hh"
 #include "hadoop/SerialUtils.hh"
 
+#include "FeatureExtractor.h"
 #include "histogram.h"
 #include "vldsift.hpp"
+#include "Daisy.h"
 
 static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &stream);
 
@@ -53,12 +55,27 @@ namespace HadoopUtils {
 
 class ImgProcMap: public HadoopPipes::Mapper {
 	public:
-		enum ImgAlgo {
-			SIFT = 0,
-			HISTOGRAM
+		struct FeatureExt {
+			enum ImgAlgo {
+				SIFT = 0,
+				HISTOGRAM,
+				DAISY
+			};
 		};
+
+		struct KeyPointDetector {
+			enum KPDetector {
+				NONE = 0,
+				MSER,
+				SIFT,
+				SURF,
+				ORB,
+				YAPE
+			};
+		};
+		
 	public:
-		ImgProcMap(HadoopPipes::TaskContext& context) {
+		ImgProcMap(HadoopPipes::TaskContext& context) : debug (false) {
 			const HadoopPipes::JobConf *conf = context.getJobConf ();
 			HADOOP_ASSERT (conf != NULL, "There's no JobConf!");
 
@@ -66,8 +83,57 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			HADOOP_ASSERT (hasAlgo != false, "No image processing algorithm defined in conf file!");
 
 			algo = context.getJobConf ()->getInt ("multimodal.img.algo");
+			
+			fe = NULL;
+			
+			switch (algo) {
+				case FeatureExt::SIFT:
+				{
+					fe = new VLDSIFT ();
+					
+					break;
+				}
+				
+				case FeatureExt::DAISY:
+				{
+					fe = new Daisy ();
+					break;
+				}
+				
+				case FeatureExt::HISTOGRAM:
+				{
+					int hbin = 4, sbin = 4, vbin = 3;
+					if (conf->hasKey ("multimodal.img.hist.hbin"))
+						hbin = context.getJobConf ()->getInt ("multimodal.img.hist.hbin");
+					if (conf->hasKey ("multimodal.img.hist.sbin"))
+						sbin = context.getJobConf ()->getInt ("multimodal.img.hist.sbin");
+					if (conf->hasKey ("multimodal.img.hist.vbin"))
+						vbin = context.getJobConf ()->getInt ("multimodal.img.hist.vbin");
+					
+					fe = new Histogram (hbin, sbin, vbin);
+					
+					break;
+				}
+				
+				default:
+					/* should never ever get here! */
+					std::cerr << "undefined algorithm" << std::endl;
+			}
+			
+			HADOOP_ASSERT (fe != NULL, "Problem occured while constr img algo obj.");	
+			
+			if (conf->hasKey ("multimodal.img.keypoint"))
+				setKeypointDetector (context.getJobConf ()->getInt ("multimodal.img.keypoint"));
+
+			if (conf->hasKey ("multimodal.debug"))
+				debug = context.getJobConf ()->getBoolean ("multimodal.debug"); 
 		}
 
+		~ImgProcMap () {
+			if (fe)
+				delete fe;
+		}
+		
 		void map(HadoopPipes::MapContext& context) {
 			/* get the base name of the file as key for the <K,V> pair */
 			std::string k = getBaseFilename (context.getInputKey ());
@@ -87,48 +153,39 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			std::cout << std::endl;
 			*/
 
-			switch (algo) {
-				case SIFT:
-				{
-					/* do sift */
-					VLDSIFT dsift;
+			/* generate features for the image */
+			std::vector<std::vector<double> > descr;
+			if (debug)
+				std::cerr << "processing: " << k;
+			fe->getFeatures (img, descr);
 
-					std::vector<std::vector<double> > descr;
-					dsift.getDSIFT (img, descr);
-
-					std::vector<std::vector<double> >::const_iterator it 
-						= descr.begin (), it_end = descr.end ();
-					for (int i = 0; it != it_end; it++, i++) {
-						std::string key = k;
-						char idx[10];
-						snprintf (idx, 9, ":%d",i); 
-						HadoopUtils::StringOutStream buf;
-						serializeFloatVector(*it, buf);
-						key.append (idx);
-						context.emit (key, buf.str ());
-					}
-
-					break;
+			std::vector<std::vector<double> >::const_iterator it 
+				= descr.begin (), it_end = descr.end ();
+			for (int i = 0; it != it_end; it++, i++) {
+				std::string key = k;
+				/* append an index of the key to the filename
+				 * if there are more than one vectors
+				 */
+				if (descr.size () > 1) {
+					char idx[10];
+					snprintf (idx, 9, ":%d",i); 
+					key.append (idx);
 				}
+				/* serialize the vector and send it to the reducer */
+				HadoopUtils::StringOutStream buf;
+				serializeFloatVector(*it, buf);
+				context.emit (key, buf.str ());
+			}	
 
-				case HISTOGRAM:
-				{
-					Histogram h (4, 4, 3);
-					std::vector<double> hv;
-					h.getHSV (img, hv);
-
-					// serialize to Java's VectorWritable
-					HadoopUtils::StringOutStream buf;
-					serializeFloatVector(hv, buf);
-					context.emit (k, buf.str());
-
-					break;
-				}
-				default:
-					/* should never ever get here! */
-					std::cerr << "undefined algorithm" << std::endl;
+			if (debug) {
+				if (!descr.size ())
+					std::cerr << " ...could not find any keypoints";
+				else
+					std::cerr << " ... DONE";
+				std::cerr << std::endl;
 			}
 		}
+
 	public:
 		static void test() {
 			std::vector<double> v = std::vector<double>();
@@ -139,9 +196,27 @@ class ImgProcMap: public HadoopPipes::Mapper {
 			std::cout << buf.str();
 		}
 
+		static void testDaisy (const char* file) {
+			Daisy d;
+			Ptr<FeatureDetector> fd = FeatureDetector::create ("MSER");
+			d.setKeypointDetector (fd);
+			std::vector<std::vector<double> > descr;
+			d.getFeatures (file, descr);
+
+			std::cout << "number of features found: " << descr.size () << std::endl;
+			if (descr.size ()) {
+				std::cout << "first one (" << descr[0].size() << "):" << std::endl;
+				for (int i=0; i < descr[0].size(); ++i)
+					std::cout << descr[0][i] << " ";
+				std::cout << std::endl;
+			}
+		}
+
 
 	private:
 	int algo; /* image processing algorithm to run */
+	bool debug;
+	FeatureExtractor *fe;
 	
   	static const int8_t FLAG_DENSE = 0x01;
         static const int8_t FLAG_SEQUENTIAL = 0x02;
@@ -230,6 +305,30 @@ class ImgProcMap: public HadoopPipes::Mapper {
 		else
 			return baseName;
 	}
+	
+	void setKeypointDetector (int kpDetector) const {
+		Ptr<FeatureDetector> kpDet = NULL;
+		switch (kpDetector) {
+			case KeyPointDetector::MSER:
+				kpDet = FeatureDetector::create ("MSER");
+				break;
+			case KeyPointDetector::SIFT:
+				kpDet = FeatureDetector::create ("SIFT");
+				break;
+			case KeyPointDetector::SURF:
+				kpDet = FeatureDetector::create ("SURF");
+				break;
+			case KeyPointDetector::ORB:
+				kpDet = FeatureDetector::create ("ORB");
+				break;
+			case KeyPointDetector::YAPE:
+				break;
+			default:
+				return;
+		}
+		
+		fe->setKeypointDetector (kpDet);
+	}
 };
 
 
@@ -292,8 +391,12 @@ static void deserializeBytes (std::vector<char> &b, HadoopUtils::InStream &strea
 }
 
 int main (int argc, char **argv) {
-	if (argc == 2 && strcmp(argv[1], "test") == 0)
-		ImgProcMap::test();
+	if (argc >= 2) {
+	       if (strcmp(argv[1], "test") == 0)
+			ImgProcMap::test();
+	       else if (strcmp(argv[1], "testDaisy") == 0)
+		       ImgProcMap::testDaisy(argv[2]);
+	}
 	else
 		return HadoopPipes::runTask (HadoopPipes::TemplateFactory<ImgProcMap, ImgProcReduce>());
 }

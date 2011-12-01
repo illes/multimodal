@@ -36,12 +36,18 @@ VL_LDFLAGS=../vlfeat/bin/$(ARCH)/libvl.a -lpthread
 DAISY_CFLAGS=-I../daisy/include
 DAISY_LDFLAGS=../daisy/lib/libdaisy.a
 CV_CFLAGS=-I$(CV_HOME)/include -I$(CV_HOME)/include/opencv $(CFLAGS)
-CV_LDFLAGS=-L$(CV_HOME)/lib -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_video -lopencv_core -lopencv_calib3d -lopencv_video /usr/lib/libjpeg.a /usr/lib/libpng12.a /usr/lib/libjasper.a /usr/lib/libtiff.a /usr/lib/libz.a -lrt
+CV_LDFLAGS=-L$(CV_HOME)/lib -lopencv_features2d -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_video -lopencv_core -lopencv_calib3d -lopencv_video /usr/lib/libjpeg.a /usr/lib/libpng12.a /usr/lib/libjasper.a /usr/lib/libtiff.a /usr/lib/libz.a -lrt
 SOURCES=vldsift.cpp histogram.cpp skin_detector.cpp houghlines.cpp keypoints.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=vldsift cluster histogram detectsqr skin_detect houghlines keypoints
 
 all: $(SOURCES) $(EXECUTABLE)
+
+FeatureExtractor.o: FeatureExtractor.cpp
+	$(CC) $(CV_CFLAGS) -c $<
+
+Daisy.o: Daisy.cpp
+	$(CC) $(CV_CFLAGS) $(DAISY_CFLAGS) -c $<
 
 vldsift: vldsift.o
 	$(CC) $(VL_CFLAGS) $< -o $@ $(VL_LDFLAGS)
@@ -49,7 +55,7 @@ vldsift: vldsift.o
 histogram.o: histogram.cpp
 	$(CC) $(CV_CFLAGS) -c $<
 
-histogram: histogram_standalone.o histogram.o
+histogram: histogram_standalone.o histogram.o FeatureExtractor.o
 	$(CC) $(CV_CFLAGS) $^ -o $@ $(CV_LDFLAGS)
 
 keypoints: keypoints.cpp
@@ -65,10 +71,10 @@ houghlines: houghlines.o
 	$(CC) $(CV_CFLAGS) $< -o $@ $(CV_LDFLAGS)
 
 hadoop_wrapper.o: hadoop_wrapper.cpp
-	$(CC) $(JVM_CFLAGS) $(HADOOP_CFLAGS) $(CV_CFLAGS) $(VL_CFLAGS) -c $<
+	$(CC) $(JVM_CFLAGS) $(HADOOP_CFLAGS) $(CV_CFLAGS) $(VL_CFLAGS) $(DAISY_CFLAGS) -c $<
 
-hadoop_wrapper: hadoop_wrapper.o histogram.o
-	$(CC) $^ -o $@ $(CV_LDFLAGS) $(HADOOP_LDFLAGS) $(JVM_LDFLAGS) $(VL_LDFLAGS)
+hadoop_wrapper: hadoop_wrapper.o histogram.o FeatureExtractor.o Daisy.o
+	$(CC) $^ -o $@ $(CV_LDFLAGS) $(HADOOP_LDFLAGS) $(JVM_LDFLAGS) $(VL_LDFLAGS) $(DAISY_LDFLAGS)
 
 .cpp.o:
 	$(CC) $(CFLAGS) $(CV_CFLAGS) $(VL_CFLAGS) -c $<
